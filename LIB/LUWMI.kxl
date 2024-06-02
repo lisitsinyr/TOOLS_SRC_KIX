@@ -1,0 +1,519 @@
+;------------------------------------------------------------------------
+; ComputerSystem
+;------------------------------------------------------------------------
+function ComputerSystem()
+;begin
+   ? "--------------"
+   ? "ComputerSystem"
+   ? "--------------"
+   $SystemSet = GetObject("winmgmts:").InstancesOf ("Win32_ComputerSystem")
+   for each $System in $SystemSet
+      ? "Name PC:             " $System.Name
+      ? "Domain PC:           " $System.Domain
+      ? "Manufacturer:        " $System.Manufacturer
+      ? "Model:               " $System.Model
+      ? "NumberOfProcessors:  " $System.NumberOfProcessors
+      ? "TotalPhysicalMemory: " VAL($System.TotalPhysicalMemory) / (1024 * 1024)
+      ? "UserName:            " $System.UserName
+   next
+endfunction
+
+;------------------------------------------------------------------------
+; Processor
+;------------------------------------------------------------------------
+function Processor()
+;begin
+   ? "--------------"
+   ? "Processor"
+   ? "--------------"
+   $ProcessorSet = GetObject("winmgmts:").InstancesOf ("Win32_Processor")
+   for each $Processor in $ProcessorSet
+      ? "Name:                " $Processor.Name
+      ? "Manufacturer:        " $Processor.Manufacturer
+      ? "ExtClock:            " $Processor.ExtClock
+      ? "Version:             " $Processor.Version
+   next
+endfunction
+
+;------------------------------------------------------------------------
+; DiskDrive
+;------------------------------------------------------------------------
+function DiskDrive()
+;begin
+   ? "--------------"
+   ? "DiskDrive"
+   ? "--------------"
+   $DiskDriveSet = GetObject("winmgmts:").InstancesOf ("Win32_DiskDrive")
+   for each $DiskDrive in $DiskDriveSet
+      ? "Caption:           " $DiskDrive.Caption
+      ? "InterfaceType:     " $DiskDrive.InterfaceType
+      ? "Partitions:        " $DiskDrive.Partitions
+      ? "Size:              " $DiskDrive.Size
+      ? "TotalCylinders:    " $DiskDrive.TotalCylinders
+      ? "TotalHeads:        " $DiskDrive.TotalHeads
+      ? "TotalSectors:      " $DiskDrive.TotalSectors
+      ? "TracksPerCylinder: " $DiskDrive.TracksPerCylinder
+      ? "SectorsPerTrack:   " $DiskDrive.SectorsPerTrack
+   next
+endfunction
+
+;------------------------------------------------------------------------
+; LogicalDisk
+;------------------------------------------------------------------------
+function LogicalDisk()
+;begin
+   ? "--------------"
+   ? "LogicalDisk"
+   ? "--------------"
+   $LogicalDiskSet = GetObject("winmgmts:").InstancesOf ("Win32_LogicalDisk")
+
+   if $LogicalDiskSet
+      ? 
+      AddCharR(" ","Name",4) " "
+      AddCharR(" ","Description",25) " "
+      AddCharR(" ","DriveType",9) " "
+      AddCharR(" ","FileSystem",10) " "
+      AddCharR(" ","VolumeName",18) " "
+      AddCharR(" ","VolumeSerialNumber",18) " "
+      AddCharR(" ","FreeSpace",12) " "
+      AddCharR(" ","Size",12) " "
+   else
+      ? "нет"
+   endif
+
+   for each $LogicalDisk in $LogicalDiskSet
+      ?  
+      AddCharR(" ",$LogicalDisk.Name,4) " "
+      AddCharR(" ",$LogicalDisk.Description,25) " "
+      AddChar (" ",$LogicalDisk.DriveType,9) " "
+      AddCharR(" ",$LogicalDisk.FileSystem,10) " "
+      AddCharR(" ",$LogicalDisk.VolumeName,18) " "
+      AddCharR(" ",$LogicalDisk.VolumeSerialNumber,18) " "
+      AddChar (" ",$LogicalDisk.FreeSpace,12) " "
+      AddChar (" ",$LogicalDisk.Size,12)
+   next
+endfunction
+   
+;------------------------------------------------------------------------
+; Printer
+;------------------------------------------------------------------------
+function Printer()
+;begin
+   ? "--------------"
+   ? "Printer"
+   ? "--------------"
+   $PrinterSet = GetObject("winmgmts:").InstancesOf ("Win32_Printer")
+   $i = 0
+   for each $Printer in $PrinterSet
+      $i = $i + 1
+      ? $i " " AddCharR(" ",$Printer.PortName,40) " " AddCharR(" ",$Printer.Name,40)
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+   
+;------------------------------------------------------------------------
+; USBHub
+;------------------------------------------------------------------------
+function USBHub()
+;begin
+   ? "--------------"
+   ? "USBHub"
+   ? "--------------"
+   $USBHubSet = GetObject("winmgmts:").InstancesOf ("Win32_USBHub")
+   $i = 0
+   for each $USBHub in $USBHubSet
+      $i = $i + 1
+      ? $i " " AddCharR(" ",$USBHub.Name,40) " " AddCharR(" ",$USBHub.DeviceID,40)
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+   
+;------------------------------------------------------------------------
+; SerialPort
+;------------------------------------------------------------------------
+function SerialPort()
+;begin
+   ? "--------------"
+   ? "SerialPort"
+   ? "--------------"
+   $SerialPortSet = GetObject("winmgmts:").InstancesOf ("Win32_SerialPort")
+   $i = 0
+   for each $SerialPort in $SerialPortSet
+      $i = $i + 1
+      ? $i " " AddCharR(" ",$SerialPort.Name,40)
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+
+;------------------------------------------------------------------------
+; ParallelPort
+;------------------------------------------------------------------------
+function ParallelPort()
+;begin
+   ? "--------------"
+   ? "ParallelPort"
+   ? "--------------"
+   $ParallelPortSet = GetObject("winmgmts:").InstancesOf ("Win32_ParallelPort")
+   $i = 0
+   for each $ParallelPort in $ParallelPortSet
+      $i = $i + 1
+      ? $i " " AddCharR(" ",$ParallelPort.Name,40)
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+
+;------------------------------------------------------------------------
+; FloppyDrive
+;------------------------------------------------------------------------
+function FloppyDrive()
+;begin
+   ? "--------------"
+   ? "FloppyDrive"
+   ? "--------------"
+   $FloppyDriveSet = GetObject("winmgmts:").InstancesOf ("Win32_FloppyDrive")
+   $i = 0
+   for each $FloppyDrive in $FloppyDriveSet
+      $i = $i + 1
+      ? $i " " AddCharR(" ",$FloppyDrive.Name,40)
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+
+;------------------------------------------------------------------------
+; CDROMDrive
+;------------------------------------------------------------------------
+function CDROMDrive()
+;begin
+   ? "--------------"
+   ? "CDROMDrive"
+   ? "--------------"
+   $CDROMDriveSet = GetObject("winmgmts:").InstancesOf ("Win32_CDROMDrive")
+   $i = 0
+   for each $CDROMDrive in $CDROMDriveSet
+      $i = $i + 1
+      ? $i " " AddCharR(" ",$CDROMDrive.Name,40)
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+
+;------------------------------------------------------------------------
+; NetworkAdapter
+;------------------------------------------------------------------------
+function NetworkAdapter()
+;begin
+   ? "--------------"
+   ? "NetworkAdapter"
+   ? "--------------"
+   $NetworkAdapterSet = GetObject("winmgmts:").InstancesOf ("Win32_NetworkAdapter")
+   $i = 0
+   for each $NetworkAdapter in $NetworkAdapterSet
+      $i = $i + 1
+      ? $i " " AddCharR(" ",$NetworkAdapter.Name,40)
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+
+;------------------------------------------------------------------------
+; DesktopMonitor
+;------------------------------------------------------------------------
+function DesktopMonitor()
+;begin
+   ? "--------------"
+   ? "DesktopMonitor"
+   ? "--------------"
+   $DesktopMonitorSet = GetObject("winmgmts:").InstancesOf ("Win32_DesktopMonitor")
+   $i = 0
+   for each $DesktopMonitor in $DesktopMonitorSet
+      $i = $i + 1
+      ? $i " " AddCharR(" ",$DesktopMonitor.Caption,40)
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+
+;------------------------------------------------------------------------
+; DisplayConfiguration
+;------------------------------------------------------------------------
+function DisplayConfiguration()
+;begin
+   ? "--------------"
+   ? "DisplayConfiguration"
+   ? "--------------"
+   $DisplayConfigurationSet = GetObject("winmgmts:").InstancesOf ("Win32_DisplayConfiguration")
+   $i = 0
+   for each $DisplayConfiguration in $DisplayConfigurationSet
+      $i = $i + 1
+      ? $i " " AddCharR(" ",$DisplayConfiguration.Caption,40)
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+
+;------------------------------------------------------------------------
+; VideoConfiguration
+;------------------------------------------------------------------------
+function VideoConfiguration()
+;begin
+   ? "--------------"
+   ? "VideoConfiguration"
+   ? "--------------"
+   $VideoConfigurationSet = GetObject("winmgmts:").InstancesOf ("Win32_VideoConfiguration")
+   $i = 0
+   for each $VideoConfiguration in $VideoConfigurationSet
+      $i = $i + 1
+      ? $i " " AddCharR(" ",$VideoConfiguration.Caption,40)
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+
+;------------------------------------------------------------------------
+; SystemAccount
+;------------------------------------------------------------------------
+function SystemAccount()
+;begin
+   ? "--------------"
+   ? "SystemAccount"
+   ? "--------------"
+   $SystemAccountSet = GetObject("winmgmts:").InstancesOf ("Win32_SystemAccount")
+   $i = 0
+   for each $SystemAccount in $SystemAccountSet
+      $i = $i + 1
+      ? 
+      AddCharR(" ",$SystemAccount.Description,60) " "
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+
+;------------------------------------------------------------------------
+; UserAccount
+;------------------------------------------------------------------------
+function UserAccount()
+;begin
+   ? "--------------"
+   ? "UserAccount"
+   ? "--------------"
+   $UserAccountSet = GetObject("winmgmts:").InstancesOf ("Win32_UserAccount")
+   for each $UserAccount in $UserAccountSet
+      ? "Name:        " $UserAccount.Name
+      ? "Description: " $UserAccount.Description
+      ? "Domain:      " $UserAccount.Domain
+      ? "FullName:    " $UserAccount.FullName
+   next
+endfunction
+
+;------------------------------------------------------------------------
+; OperatingSystem
+;------------------------------------------------------------------------
+function OperatingSystem()
+;begin
+   ? "--------------"
+   ? "OperatingSystem"
+   ? "--------------"
+   $OperatingSystemSet = GetObject("winmgmts:").InstancesOf ("Win32_OperatingSystem")
+   for each $OperatingSystem in $OperatingSystemSet
+      ? "Caption:                 " $OperatingSystem.Caption
+      ? "BuildNumber:             " $OperatingSystem.BuildNumber
+      ? "BuildType:               " $OperatingSystem.BuildType
+      ? "CodeSet:                 " $OperatingSystem.CodeSet
+      ? "CountryCode:             " $OperatingSystem.CountryCode
+      ? "CSDVersion:              " $OperatingSystem.CSDVersion
+      ? "CSName:                  " $OperatingSystem.CSName
+      ? "CurrentTimeZone:         " $OperatingSystem.CurrentTimeZone
+      ? "Description:             " $OperatingSystem.Description
+      ? "FreePhysicalMemory:      " $OperatingSystem.FreePhysicalMemory
+      ? "InstallDate:             " $OperatingSystem.InstallDate
+      ? "LastBootUpTime:          " $OperatingSystem.LastBootUpTime
+      ? "LocalDateTime:           " $OperatingSystem.LocalDateTime
+      ? "Locale:                  " $OperatingSystem.Locale
+      ? "Manufacturer:            " $OperatingSystem.Manufacturer
+      ? "Organization:            " $OperatingSystem.Organization
+      ? "OSLanguage:              " $OperatingSystem.OSLanguage
+      ? "OSProductSuite:          " $OperatingSystem.OSProductSuite
+      ? "OSType:                  " $OperatingSystem.OSType
+      ? "OtherTypeDescription:    " $OperatingSystem.OtherTypeDescription
+      ? "PlusProductID:           " $OperatingSystem.PlusProductID
+      ? "PlusVersionNumber:       " $OperatingSystem.PlusVersionNumber
+      ? "ProductType:             " $OperatingSystem.ProductType
+      ? "RegisteredUser:          " $OperatingSystem.RegisteredUser
+      ? "SerialNumber:            " $OperatingSystem.SerialNumber
+      ? "ServicePackMajorVersion: " $OperatingSystem.ServicePackMajorVersion
+      ? "ServicePackMinorVersion: " $OperatingSystem.ServicePackMinorVersion
+      ? "SystemDevice:            " $OperatingSystem.SystemDevice
+      ? "SystemDirectory:         " $OperatingSystem.SystemDirectory
+      ? "SystemDrive:             " $OperatingSystem.SystemDrive
+      ? "TotalVirtualMemorySize:  " $OperatingSystem.TotalVirtualMemorySize
+      ? "TotalVisibleMemorySize:  " $OperatingSystem.TotalVisibleMemorySize
+      ? "Version:                 " $OperatingSystem.Version
+      ? "WindowsDirectory:        " $OperatingSystem.WindowsDirectory
+   next
+endfunction
+
+;------------------------------------------------------------------------
+; Environment
+;------------------------------------------------------------------------
+function Environment()
+;begin
+   ? "--------------"
+   ? "Environment"
+   ? "--------------"
+   $EnvironmentSet = GetObject("winmgmts:").InstancesOf ("Win32_Environment")
+   for each $Environment in $EnvironmentSet
+      ? 
+      AddCharR(" ",$Environment.Name,25) " "
+      AddCharR(" ",$Environment.UserName,30) " "
+      $Environment.VariableValue
+   next
+endfunction
+
+;------------------------------------------------------------------------
+; Product
+;------------------------------------------------------------------------
+function Product()
+;begin
+   ? "--------------"
+   ? "Product"
+   ? "--------------"
+   $ProductSet = GetObject("winmgmts:").InstancesOf ("Win32_Product")
+   $i = 0
+   for each $Product in $ProductSet
+      $i = $i + 1
+      ? 
+      AddCharR(" ",$Product.Name,65) " "
+      AddCharR(" ",$Product.Vendor,30) " "
+      AddCharR(" ",$Product.InstallDate,8) " "
+      AddCharR(" ",$Product.Version,20) " "
+      ;AddCharR(" ",$Product.InstallLocation,8) " "
+   next
+   if $i = 0 ? "нет" endif
+endfunction
+
+;------------------------------------------------------------------------
+; Group for user
+;------------------------------------------------------------------------
+function AllGroupsUserWMI()
+;begin
+   ? "==========================================="
+   ? " Группы пользователя (глобальные)"
+   ? "==========================================="
+   For Each $group In $arrAllGroupsUser
+      ? $group
+   next
+endfunction
+
+;-----------------------------------------------------------
+; CheckLocalGroup_WMI
+;-----------------------------------------------------------
+function CheckLocalGroup_WMI ($Group)
+;begin
+   $CheckLocalGroup_WMI = ""
+   $Members = Groupmembers(@WKSTA, $Group)
+   For Each $Member In $Members
+      if UCase($Member) = UCase(@UserID)
+         $CheckLocalGroup_WMI = $Group
+      endif
+   next
+endfunction
+
+;------------------------------------------------------------------------
+; WMIALL
+;------------------------------------------------------------------------
+function WMIALL()
+;begin
+   $SystemName = %COMPUTERNAME%
+   ;$Result = RedirectOutput("\\S73FS01\LOG$\COMP\"+$SystemName+".txt", 1)
+
+;  ALAN 2016.02.28
+;   $Result = RedirectOutput("\\"+$FileServer01+"\LOG$\COMP\"+$SystemName+".txt", 1)
+   $Result = RedirectOutput("\\S73FS04\LOG$\COMP\"+$SystemName+".txt", 1)
+
+   ;------------------------------------------------------------------------
+   ;
+   ;------------------------------------------------------------------------
+   $Key = "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Internet Explorer"
+   $IEVersion = RegReadString ($Key, "Version")
+   $IEBuild = RegReadString ($Key, "Build")
+   ? "IEVersion: " $IEVersion $IEBuild
+
+   ;------------------------------------------------------------------------
+   ;
+   ;------------------------------------------------------------------------
+   if @ProductType = "Windows 2000 Professional"
+      $Key = "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Time Zones\Caucasus Standard Time"
+   else
+      $Key = "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Time Zones\Russian Standard Time"
+   endif
+   $Display = RegReadString ($Key, "Display")
+   ? "Display: " $Display
+
+   ;------------------------------------------------------------------------
+   ;
+   ;------------------------------------------------------------------------
+   $Group = CheckLocalGroup_WMI ("Опытные пользователи")
+   if $Group
+      ? $group
+   endif
+   $Group = CheckLocalGroup_WMI ("Администраторы")
+   if $Group
+      ? $group
+   endif
+   $Group = CheckLocalGroup_WMI ("Пользователи")
+   if $Group
+      ? $group
+   endif
+   ? "--------------"
+   ;------------------------------------------------------------------------
+   ;
+   ;------------------------------------------------------------------------
+   if EXIST($SAEDProgram)
+      ? "SAED: " $SAEDProgram
+   endif
+   if EXIST($WinSAEDProgram)
+      ? "WinSAED: " $WinSAEDProgram
+   endif
+   if EXIST($PasportUOSProgram)
+      ? "PasportUOS: " $PasportUOSProgram
+   endif
+
+   ;------------------------------------------------------------------------
+   ;$IPAddr
+   ;------------------------------------------------------------------------
+
+   ;------------------------------------------------------------------------
+   ;$S          = ReadString ($Path_TOOLS+"\"+"UsersNetwork.ini", @Domain, @UserID, "")
+   ;$UBR_FIO    = ExtractWord(1, $S, "|")
+   ;$UBR_PCName = ExtractWord(2, $S, "|")
+   ;$UBR        = CheckUser73_FIO_UBR ($Path_TOOLS+"\"+"User73.ini",$FIO)
+   ? "--------------"
+   ? "UBR: " $UBR 
+   ? "SystemName: " $UBR_PCName "|" @Domain "|" @UserID "|" $UBR_FIO "|" @ProductType "|" ExtractWord(1,GetIP,"/")
+   ;------------------------------------------------------------------------
+
+   ? "--------------"
+   ? "SystemName: " $SystemName "|" @Domain "|" @UserID "|" @FullName "|" @ProductType "|" ExtractWord(1,GetIP,"/")
+   ? "--------------"
+   $SystemSet = GetObject("winmgmts:").InstancesOf ("Win32_ComputerSystem")
+   if $SystemSet
+      ComputerSystem()
+      Processor()
+      DiskDrive()
+      LogicalDisk()
+      Printer()
+      USBHub()
+      SerialPort()
+      ParallelPort()
+      FloppyDrive()
+      CDROMDrive()
+      NetworkAdapter()
+      DesktopMonitor()
+      DisplayConfiguration()
+      VideoConfiguration()
+      ;SystemAccount()
+      ;UserAccount()
+      OperatingSystem()
+      Environment()
+      Product()
+      AllGroupsUserWMI()
+   else
+      ? "нет"
+   endif
+   ;------------------------------------------------------------------------
+   $Result = RedirectOutput("")
+endfunction

@@ -1,0 +1,912 @@
+;===============================================================
+; LUADS.kxl
+;===============================================================
+; ADSearch()
+; ADSIinstalled(optional $Computer)
+; ADSIInstall($target, optional $targetadmin, optional $targetPassword)
+; ADSUnlockUser($username)
+; CreateADGroup ($Container, $GrpName, $GrpType, $SecurityEnabled, optional $Description, optional $sSAMAcctName)
+; fADSIServiceRun ($Computer, $Service, $Run)
+; fADSIServiceStartup ($Computer, $Service, $StartUp)
+; GetADsPathFromHexSid($HexSid)
+; GetAllADUserInfoToFile()
+; TranslateName ($InitType, $BindName, $LookupNameType, $LookupName, $ReturnNameType)
+; MakePathsFromADlocation ($Domain, $Account)
+;---------------------------------------------------------------
+
+;---------------------------------------------------------------
+; Function ADSearch()
+;---------------------------------------------------------------
+;
+; v1.1
+;
+; Author:    
+;   Heitz Alex (HeitzAlexandre@wanadoo.fr)
+;
+; Action:    
+;   Search in Active Directory using LDAP
+;
+; Syntax:   
+;   ADSearch("Account Name", "Full Name")
+;
+; Parameters:   
+;   Full Name    (Optional)  The full name to search in the AD database
+;   Account Name (Optional)  The account name (or ID name) to search in the AD database
+;
+; Dependancies: 
+;   Active Directory client installed (Build-in in 2000 and XP systems)
+;
+; Remarks:   
+;   Working on 9x (95, 98, Me) and NTx (4, 2000, XP) systems
+;   Account name of a computer has a trailing $
+;   Only * wildcard is supported.
+;   ADSearch can't be designed to only retreive user and computer (ADODB and LDAP limits)
+;
+; Returns:   
+;   Array of elements containing the complete following string :
+;   "CN=full name,...rest of DSN...,DC=Domain,DC=Organization,DC=com or org or...,AccountName=account name,IsContainer=0|1, IsGroup=0|1
+;   Iscontainer is set to 1 when AccountName is empty
+;   IsGroup is set to 1 when the current element is a Group
+;
+; example:    
+;   ADSearch("Computers")  return 1 array  with the following value  : "CN=Computers,DC=Domain,DC=Organization,DC=com|AccountName=|IsContainer=1|IsGroup=0"
+;   ADSearch("P*")         return X arrays with values like this one : "CN=Username,OU=OU container name,DC=Domain,DC=Organization,DC=com|AccountName=Useraccount|IsContainer=0|IsGroup=0"
+;   ADSearch(,"*$$")       return X arrays with values like this one : "CN=Computer name,CN=Computers,DC=Domain,DC=Organization,DC=com|AccountName=Computer name$|IsContainer=0|IsGroup=0"
+;---------------------------------------------------------------
+Function ADSearch(Optional $ADFullName,Optional $ADAccountName)
+   Dim $AdoCon
+   dim $AdoCommand
+   dim $Recordset
+   dim $Filter
+   dim $iselect
+;begin
+   case len($ADFullName)>0 and len($ADAccountName)>0
+      $filter=" where cn='"+$adfullname+"' and samAccountName='"+$ADAccountName+"' "   
+   case len($ADFullName)>0
+      $filter=" where cn='"+$ADFullName+"' "   
+   case len($ADAccountName)>0
+      $filter=" where samAccountName='"+$ADAccountName+"' "
+   case 1
+      ; I'm sure you don't want to retreive the complete Active Directory database
+      return         
+   endselect
+   $AdoCon = CreateObject("ADODB.Connection")
+   $AdoCon.Provider = "ADsDSOObject"; Current credentials are used, as username and password aren't specified
+   $AdoCon.Open("Active Directory Provider"); Create ADO command object for the connection.
+   $AdoCommand = CreateObject("ADODB.Command")
+   $AdoCommand.ActiveConnection = $AdoCon
+   $AdoCommand.CommandText ="Select  AdsPath, samAccountName, GroupType from 'LDAP://"+GetObject("LDAP://rootDSE").Get("defaultNamingContext")+"' "+$filter; Execute the query.
+   $Recordset = $AdoCommand.Execute
+   If @error=0
+      ; $Recordset is 1 based
+      If $Recordset.RecordCount>0
+         Redim $ADSearch[$recordset.RecordCount-1]
+         $Recordset.movefirst
+         For $i=0 to $recordset.RecordCount-1
+            ; Here we'll parse the fields of the current record
+            $ADSearch[$i]=substr($Recordset.Fields("AdsPath").value,8)      ; To get rid of " LDAP://"
+            $ADSearch[$i]=$ADSearch[$i]+"|AccountName="+$Recordset.Fields("samAccountName").value+"|"
+            If len($Recordset.Fields("samAccountName").value) >0
+               $ADSearch[$i]=$ADSearch[$i]+"IsContainer=0|"
+            else
+               $ADSearch[$i]=$ADSearch[$i]+"IsContainer=1|"
+            endif
+            If len($Recordset.Fields("Grouptype").value) >0
+               $ADSearch[$i]=$ADSearch[$i]+"IsGroup=1"
+            else
+               $ADSearch[$i]=$ADSearch[$i]+"IsGroup=0"
+            endif         ; Moving to the next record we have in $Recordset
+            $Recordset.Movenext
+         next
+      endif
+   endif
+Endfunction
+
+;--------------------------------------------------------------------------------------------------
+; ADSIinstalled(optional $Computer)
+;--------------------------------------------------------------------------------------------------
+;FUNCTION         ADSIinstalled()
+;
+;AUTHOR           Howard A. Bullock (hbullock@tycoelectronics.com)
+;
+;VERSION          1.0
+;
+;ACTION           This function determines if the client has ADSI installed.
+;
+;SYNTAX           ADSIinstalled ()
+;
+;PARAMETERS       $Computer (optional) (string)
+;
+;REMARKS          This function returns true if the DSCLIENT or ADSI 2.5 or higher is installed.
+;                 See Q216290 for more detailed information that can be determined.
+;
+;RETURNS          0|1 (False|True)
+;
+;DEPENDENCIES     NONE
+;
+;EXAMPLES         if ADSIinstalled()
+;                    ? "ADSI aware client"
+;                 endif
+;
+;--------------------------------------------------------------------------------------------------
+Function ADSIinstalled(optional $Computer)
+   dim $key
+;begin
+   $key = "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Active Setup\Installed Components\{E92B03AB-B707-11d2-9CBD-0000F87A369E}"
+   if vartypename($Computer) <> "Empty" and $Computer <> ""
+      $key = "\\" + $Computer + "\" + $key
+   endif
+   if KeyExist($key)
+      $ADSIinstalled = 1
+   else
+      $ADSIinstalled = 0
+   endif
+   Exit 0
+Endfunction
+
+;--------------------------------------------------------------------------------------------------
+; ADSIInstall($target, optional $targetadmin, optional $targetPassword)
+;--------------------------------------------------------------------------------------------------
+;
+; ADSIInstall, this function will intall the ADSI service onto a target NT/w2k
+; computer.
+;
+; SYNTAX:   ADSIInstall(, [],[])
+;      
+; Parameters:    is the unc name of the computer to install RCMD on
+;
+;       is an optional username used to gain access to a remote 
+;      target computer.
+;
+;       is the password used for the 
+;
+; Returns:   Returns nothing but but check @error for detailed information
+;
+; Example:   ;this will install the RCMD service on \\testserver using inherited
+;      ;accress rights
+;      ADSIInstall("\\testserver")
+;
+;      ;This will install the RCMD service on \\testserver even through 
+;      ;\\testserver is in a different DOMAIN
+;      ADSIInstall("\\testserver", "houston\smithb", "1234")
+;
+;      ;this will install the RCMD service on \\testserver using the local
+;      ;administrator account
+;      ADSIInstall("\\testserver","administrator","1234")
+;
+; Remarks:   * the RCMD service must be running on the target computer, please see 
+;        here on how to install the RCMD service 
+;        http://kix.isorg.net/other_scripts/Kix2k%20Functions/RCMDInstall 
+;
+;      * You will need to download the ADSI install package (ads.exe) and place it in the
+;        same folder as the script.  
+;        You can find ADS.exe @ http://www.microsoft.com/NTWorkstation/downloads/Other/ADSI25.asp 
+;  
+;--------------------------------------------------------------------------------------------------
+function ADSIInstall($target, optional $targetadmin, optional $targetPassword)
+   DIM $target, $targetname, $targetadmin, $targetpassword, $targetsystemroot, $targetcode
+;begin
+   $targetcode = 'shell "%%systemroot%%\temp\ads.exe /q" del "%%systemroot%%\temp\ads.exe" del "%%systemroot%%\temp\code.kix"'   
+   if substr($target,1,2) <> "\\"
+      exit(11)
+   else
+      $targetname = substr($target,3,len($target))
+   endif   IF $targetadmin <> ""
+      if instr($targetadmin,"\") = 0
+         use "$target\ipc$$" /user:'$targetname\$targetadmin' /password:$targetPassword
+      else
+         use "$target\ipc$$" /user:'$targetadmin' /password:$targetPassword
+      endif
+   else
+      use "$target\ipc$$"
+   endif
+   Select
+      case @error = 0
+         ;install ADSI onto target computer         
+         if exist("$target\admin$$\temp\*.*") = 0 
+            md "$target\admin$$\temp"
+            if @error <> 0 exit(@error) endif
+         endif
+         if exist("ads.exe")
+            copy "ads.exe" "$target\admin$$\temp"
+         else
+            exit(2)
+         endif
+         if @error <> 0 exit(@error) endif
+         
+         $nul = open(1,"$target\admin$$\temp\code.kix",5)
+         if @error <> 0 exit(@error) endif         
+         $nul = writeline(1,$targetcode)
+         if @error <> 0 exit(@error) endif         
+         $nul = close(1)
+         if @error <> 0 exit(@error) endif         
+         shell '%comspec% /c  RCMD $target "kix32 %%systemroot%%\temp\code.kix" > nul'
+      case @error <> 0
+         ;unable to make an admin connection to the $target computer
+         exit(@error)
+   endselect
+   use "$target\ipc$$" /delete
+endfunction
+
+;---------------------------------------------------------------------
+; ADSUnlockUser($username)
+;---------------------------------------------------------------------
+;FUNCTION      ADSUnlockUser
+;
+;AUTHOR        Jens Meyer (sealeopard@usa.net)
+;
+;ACTION        Unlocks a locked user account in a Windows NT 4.0 domain
+;
+;SYNTAX        ADSUNLOCKUSER(USERNAME)
+;
+;PARAMETERS    USERNAME
+;              Required string containing the username
+;
+;RETURNS       0 if successful, otherwise error code
+;
+;REMARKS       Requires ADSI and the account the script runs under must be a member
+;              of the 'Account Operators' group
+;
+;DEPENDENCIES  none
+;
+;EXAMPLE       $rc=ADSUnlockUser('lockeduser')
+;
+;KIXTART BBS   http://81.17.37.55/cgi-bin/ultimatebb.cgi?ubb=get_topic;f=12;t=000214
+;
+;---------------------------------------------------------------------
+function ADSUnlockUser($username)
+   dim $objUser
+;begin
+   $username=trim($username)
+   if $username=''
+      $ADSUnlockUser=-1
+      return
+   endif
+   if not instr($username,'/')
+      $username=@LDOMAIN+'/'+$username
+   endif
+   $objUser = getobject('WinNT://'+$username+',user')
+   if @ERROR
+      $ADSUnlockUser=@ERROR
+   else
+      if $objUser.IsAccountLocked
+         $objUser.AccountDisabled=0
+         $objUser.IsAccountLocked=0
+         $objUser.SetInfo
+         if @ERROR
+            $ADSUnlockUser=@ERROR
+         else
+            if $objUser.IsAccountLocked
+               $ADSUnlockUser=-1
+            else
+               $ADSUnlockUser=0
+            endif
+         endif
+      else
+         $ADSUnlockUser=0
+      endif
+   endif
+   $objUser = 0
+endfunction
+
+;---------------------------------------------------------------------
+; CreateADGroup ($Container, $GrpName, $GrpType, $SecurityEnabled, optional $Description, optional $sSAMAcctName)
+;---------------------------------------------------------------------
+;FUNCTION         CreateADGroup()
+;
+;VERSION          1.0
+;
+;AUTHOR           Howard A. Bullock (habullock@comcast.net)
+;
+;ACTION           Create a group of the specified type in the specified container.
+;
+;SYNTAX           CreateADGroup ($Container, $GrpName, $GrpType, $SecurityEnabled, optional $Description, optional $SAMAcctName)
+;
+;PARAMETERS       $Container (Required) -  String [dinstinguished name of container]
+;                 $GrpName (Required) -  String
+;                 $GrpType (Required) -  String [local | global | universal]
+;                 $SecurityEnabled (Required) -  Integer [0 or 1]
+;                 $Description (Optional) - String
+;                 $SAMAcctName (Optional) - String
+;
+;
+;REMARKS          SamAccountName CANNOT be longer than 20 characters. It will automatically
+;                 be trimmed if necessary.
+;
+;RETURNS          1 if success; 0 if failed; sets @error
+;
+;DEPENDENCIES     ADSI
+;
+;EXAMPLES         Create a local "distribution list" group
+;                 $DN_of_OU = "OU=test,OU=9826,OU=Departments,DC=domain,DC=com"
+;                 if CreateADGroup ($DN_of_OU, "HABtest", "local", 0, "KiXtart Test")
+;                    ? "Group successfully created"
+;                 else
+;                    ? "CreateADGroup Failed with Error: " + @error
+;                 endif
+;
+;                 Create a global "security" group
+;                 $DN_of_OU = "OU=test,OU=9826,OU=Departments,DC=domain,DC=com"
+;                 if CreateADGroup ($DN_of_OU, "HABtest2", "global", 1, "KiXtart Test")
+;                    ? "Group successfully created"
+;                 else
+;                    ? "CreateADGroup Failed with Error: " + @error
+;                 endif
+;
+;
+Function CreateADGroup ($Container, $GrpName, $GrpType, $SecurityEnabled, optional $Description, optional $sSAMAcctName)
+   ;ADS_GROUP_TYPE_GLOBAL_GROUP       = 0x00000002,
+   ;ADS_GROUP_TYPE_DOMAIN_LOCAL_GROUP = 0x00000004,
+   ;ADS_GROUP_TYPE_LOCAL_GROUP        = 0x00000004,
+   ;ADS_GROUP_TYPE_UNIVERSAL_GROUP    = 0x00000008,
+   ;ADS_GROUP_TYPE_SECURITY_ENABLED   = 0x80000000
+
+   Dim $oOU, $oNewGrp, $error
+;begin
+   $CreateADGroup = 0
+
+   Select
+      Case $GrpType = "local"        $GrpType = &00000004
+      Case $GrpType = "global"       $GrpType = &00000002
+      Case $GrpType = "universal"    $GrpType = &00000008
+      Case 1
+         WriteLog2($LogFile, "Function: CreateADGroup - Parameter(GrpType) Error: " + @error + "  " + @serror
+         exit 87
+   EndSelect
+
+   If not ($SecurityEnabled = 1 or $SecurityEnabled = 0)
+      ;WriteLog2($LogFile, "Function: CreateADGroup - Parameter(SecurityEnabled) Error: " + @error + "  " + @serror)
+      exit 87
+   EndIf
+
+   If $SecurityEnabled
+      $GrpType = $GrpType | &80000000
+   EndIF
+
+   If VarTypeName($SAMAcctName) = "Empty"
+      $SAMAcctName = $GrpName
+   EndIf
+
+   If Len($SAMAcctName) > 20 Then
+      ; "SamAccountName CANNOT be bigger than 20 characters"
+      $SAMAcctName = left($SAMAcctName, 20)
+      ;WriteLog2($LogFile, "Function: CreateADGroup - Trimming SAMAcctName to 20 characters")
+   EndIf
+
+   $oOU = GetObject("LDAP://" + $Container)
+   $error = @error
+   If $error = 0
+      $oNewGrp = $oOU.Create("group", "CN=" + $GrpName)
+      $oNewGrp.Put("sAMAccountName", $SAMAcctName)
+      $oNewGrp.Put("GroupType", $GrpType)
+      If VarTypeName($Description) <> "Empty"
+         $oNewGrp.Put("Description", $Description)
+      Endif
+      $oNewGrp.SetInfo
+      $error = @error
+      If $error <> 0
+         ;WriteLog2($LogFile, "Function: CreateADGroup - SetInfo Error: " + @error + "  " + @serror)
+      EndIf
+   Else
+      ;WriteLog2($LogFile, "Function: CreateADGroup - Get OU Error: " + @error + "  " + @serror)
+   EndIf
+   $oOU = 0
+   $oNewGrp = 0
+   if $error = 0
+      $CreateADGroup = 1
+   endif
+   exit $error
+EndFunction
+
+;---------------------------------------------------------------------
+; fADSIServiceRun ($Computer, $Service, $Run)
+;---------------------------------------------------------------------
+;FUNCTION fADSIServiceRun()
+; fADSIServiceRun() - ADSI routine that starts, stops ,pause, and continues a service 
+;AUTHOR Howard A. Bullock (hbullock@tycoelectronics.com)
+;ACTION Starts or stops a service.
+;SYNTAX fADSIServiceRun(Computer, Service, $Run)
+;PARAMETERS $Computer (Required) - String value
+; $Service (Required) - String value
+; $Run (Required) (0=stop or 1=start|continue or 2=Pause)
+;REMARKS This function starts,stops, pauses, or continues a service on
+; the local or a remote computer. This function sets @ERROR on exit.
+; when "pausing" a service this function will start a stopped service then
+; pause it.
+;RETURNS Nothing
+;DEPENDENCIES ADSI
+;EXAMPLES ServiceRun ("", "Alerter", 0)
+; ServiceRun ("SomeComputer", "Alerter", 1)
+;---------------------------------------------------------------------
+Function fADSIServiceRun ($Computer, $Service, $Run)
+   Dim $objService, $status, $StartUp
+;begin
+   ; Validate input parameters
+   if VarType($Computer) <> 8
+      exit(87)
+   endif
+   if VarType($Service) <> 8
+      exit(87)
+   endif
+   if VarType($Run) <> 2 and
+      VarType($Run) <> 3 and
+      $Run >= 0 and $Run <= 3
+      exit(87)
+   endif
+
+   if $Computer = ""
+      $Computer = @wksta
+   endif
+
+   $objService = Getobject("WinNT://$Computer/$Service,Service")
+   if @error = 0
+      $status = $objService.status
+
+      select
+         case $Run = 0
+            select
+               case $status = 4 ;Running
+                  $objService.stop
+               case $status = 1 ;Stopped
+                  exit (2182)
+               case $status = 7 ;Paused
+                  $objService.stop
+               case 1
+                  ? "Unhandled service status(0):$status"
+                  exit (1)
+            endselect
+         case $Run = 1
+            select
+               case $status = 1 ;Not Running
+                  $StartUp = $objService.get("StartType")
+                  if $StartUp <> 4
+                     $objService.start
+                  else
+                     exit (1058)
+                  endif
+               case $status = 7 ;Paused
+                  $objService.continue
+               case $status = 4 ;Running
+                  exit (3521)
+               case 1
+                  ? "Unhandled service status(1):$status"
+                  exit (1)
+            endselect
+         case $Run = 2
+            select
+               case $status = 4 ;Running
+                  $objService.pause
+               case $status = 1 ;Stopped
+                  $StartUp = $objService.get("StartType")
+                  if $StartUp <> 4
+                     $objService.start
+                     $objService.pause
+                  else
+                     exit (1058)
+                  endif
+               case 1
+                  ? "Unhandled service status(2):$status"
+                  exit (1)
+            endselect
+      endselect
+      $objService = ""
+   else
+      exit @error
+   endif
+ EndFunction
+
+;---------------------------------------------------------------------
+; fADSIServiceStartup ($Computer, $Service, $StartUp)
+;---------------------------------------------------------------------
+;FUNCTION fADSIServiceStartup()
+; fADSIServiceStartup() - ADSI routine to change a service startup type 
+;
+;AUTHOR Howard A. Bullock (hbullock@tycoelectronics.com)
+;
+;ACTION Set the startup property of a service.
+;
+;SYNTAX fADSIServiceRun(Computer, Service, $Run)
+;
+;PARAMETERS $Computer (Required) - String value
+; $Service (Required) - String value
+; $Startup (Required) - String (Boot, System, Automatic, Manual, Disabled)
+;
+;REMARKS This function sets the a service's startup parameter on the local
+; or a remote computer. This function sets @ERROR on exit.
+;
+;RETURNS Nothing
+;
+;DEPENDENCIES ADSI
+;
+;EXAMPLES fADSIServiceStartup("", "mssqlserver", "Disabled")
+; fADSIServiceStartup("", "mssqlserver", "Manual")
+; fADSIServiceStartup("RemoteComputer1", "mssqlserver", "Automatic")
+;
+;---------------------------------------------------------------------
+Function fADSIServiceStartup ($Computer, $Service, $StartUp)
+   Dim $objService
+;begin
+   ; Validate input parameters
+   if VarType($Computer) <> 8
+      exit(87)
+   endif
+   if VarType($Service) <> 8
+      exit(87)
+   endif
+   if VarType($StartUp) <> 8 and
+      $StartUp <> "Boot" and
+      $StartUp <> "System" and
+      $StartUp <> "Automatic" and
+      $StartUp <> "Manual" and
+      $StartUp <> "Disabled"
+      exit(87)
+   endif
+   if VarType($ServiceAccountName ) <> 8 and VarType($ServiceAccountName) <> 0
+      exit(87)
+   endif
+   if VarType($Password) <> 8 and VarType($Password) <> 0
+      exit(87)
+   endif
+
+   if $Computer = ""
+      $Computer = @wksta
+   endif
+
+   $objService = Getobject("WinNT://$Computer/$Service,Service")
+   if @error = 0
+      Select
+         case $StartUp = "Automatic" $StartUp = 2
+         case $StartUp = "Manual" $StartUp = 3
+         case $StartUp = "Disabled" $StartUp = 4
+         case $StartUp = "Boot" $StartUp = 0 ;valid only for driver services
+         case $StartUp = "System" $StartUp = 1 ;valid only for driver services
+      EndSelect
+      if VarType($StartUp) <> 8
+         $objService.put("StartType",$StartUp)
+      endif
+      $objService.SetInfo
+      $objService = ""
+   endif
+   exit (@error)
+EndFunction 
+
+;---------------------------------------------------------------------
+; GetADsPathFromHexSid($HexSid)
+;---------------------------------------------------------------------
+;FUNCTION GetAdsPathFromHexSid($HexSid)
+;
+;AUTHOR Howard A. Bullock (hbullock@comcast.net)
+;
+;ACTION Uses ADsSecurity.DLL to translate a Hex Sid into the
+; objects AdsPath.
+;
+;SYNTAX GetADsPathFromHexSid($HexSid)
+;
+;PARAMETERS $HexSid (Required) - String value
+;
+;REMARKS ADsSecurity.Dll required
+;
+;RETURNS String - ADsPath path of object represented by a Hex Sid.
+;
+;DEPENDENCIES KiXtart 4.02, AdsSecurity.DLL
+;
+;EXAMPLES
+; GetAdsPathFromHexSid("010500000000000515000000BC2E7001633DBD3D0E6D055C79050000")
+;
+;---------------------------------------------------------------------
+Function GetADsPathFromHexSid($HexSid)
+   Dim $oADsSid
+;begin
+   $GetADsPathFromHexSid = ""
+   $oADsSid = CreateObject("ADsSid")
+   If VarTypeName($oADsSid) = 'Object'
+      $oADsSid.SetAS(1,$HexSid)
+      If @Error <> 0
+         ? "Failed: SetAS(1,$HexSid) @Error @Serror"
+         Exit 1
+      Endif
+      $GetADsPathFromHexSid=$oADsSid.GetAS(5)
+      If @Error <> 0
+         ? "Failed: GetAS(5) @Error @Serror"
+         Exit 1
+      Endif
+   Else
+      ? "CreateObject('ADsSid') Failed. @Error @Serror"
+      ? "AdsSecurity.DLL required."
+      Exit 1
+   Endif
+   Exit 0
+Endfunction
+
+;---------------------------------------------------------------------
+; GetAllADUserInfoToFile()
+;---------------------------------------------------------------------
+; *** FUNCTION: GetAllADUserInfoToFile()
+; GetAllADUserInfoToFile() Queries the AD for all user information and writes to file 
+; *** AUTHOR: Ron Lewis/NTDOC
+; *** DATE CREATED: 2003-01-10 21:10 PST
+; *** ACKNOWLEDGEMENTS: Special thanks to Lonkero for help with array parsing of names
+; *** SYNTAX: GetAllADUserInfoToFile
+; *** PARAMETERS: (you must supply the LDAP lookup path and file name to save)
+; *** ACTION: This file queries the Active Directory for all user information
+; *** and copies it to a supplied file name and location. It is designed for multiple OU query
+; *** Does not include group membership and security information. The file uses a * for a
+; *** delimiter to make import into Excel easier for report viewing.
+; *** DEPENDENCIES: (KiXtart 4.02 or later) (Windows 2000 AD) (ADSI (2000 and XP workstations have ADSI))
+; *************** REVISION HISTORY ***************
+; 001.02 *** 2003-01-16 15:10 PST by Ron Lewis
+; Enabled multiple OU usage
+; 001.01 *** 2003-01-15 13:50 PST by Ron Lewis
+; Cleared up variables
+; 001.00 *** 2003-01-10 21:10 PST by Ron Lewis
+; original file release
+;
+; *** USAGE EXAMPLE: 
+;BREAK On
+;$FileName="C:\TEMP\ADUserInfo.txt"
+;$LDAP="LDAP://ou=Users,ou=business1, your company rootDSE info", "LDAP://ou=Users,ou=business2, your company rootDSE info"
+;GetAllADUserInfoToFile
+;---------------------------------------------------------------------
+Function GetAllADUserInfoToFile()
+;begin
+   For each $domain in $LDAP
+      $ou = GetObject($domain)
+      For each $user in $ou
+         $all=""
+         $StreetValue=""
+         $direct=""
+         $mymanager=""
+         $mymail=""
+         $MyDescription=""
+         $MyTelephoneNotes=""
+         $MyCompany=""
+         ; This block gathers the users Name and strips off the extra path data
+         ; ***********************************************************************
+         IF $user.name
+            $name=split(substr($user.name,4),",")
+            $name[0]=join(split($name[0],"\"),"")
+            $name=join($name,",")
+         ENDIF
+         ; ***********************************************************************
+         ; This block gathers the users smtp email address and strips off the word
+         ; "email." after the @ sign
+         ; ***********************************************************************
+         IF $user.mail
+            $mymail=split(substr($user.mail,1),",")
+            $mymail[0]=join(split($mymail[0],"email."),"")
+            $mymail=join($mymail,",")
+         ENDIF
+         ; ***********************************************************************
+         ; This block gathers the Manager and strips off the extra path data
+         ; ***********************************************************************
+         IF $user.manager
+            $mymanager=split(substr($user.manager,4),",")
+            $mymanager=join(split($mymanager[0],"\"),"")+","+$mymanager[1]
+         ENDIF
+         ; ***********************************************************************
+         ; This block gathers the directReports and strips off the extra path data
+         ; ***********************************************************************
+         For each $item in $user.directReports
+            $direct=$direct+chr(10)+$item
+         Next
+         IF Not $direct $direct=$user.directReports+chr(10)
+         ENDIF
+         For each $value in split($direct,chr(10))
+            IF $value $value=split(substr($value,4),",")
+               $all=$all+"  "+join(split($value[0],"\"),"")+","+$value[1]
+               $all=SUBSTR($all,2)
+            ENDIF
+         Next
+         ; ***********************************************************************
+         $StreetValue=join(split($user.streetAddress,@CRLF)," ")
+         $MyDescription=join(split($user.description,@CRLF,),"")
+         $MyTelephoneNotes=join(split($user.info,@CRLF,),"")
+         $MyCompany=join(split($user.company,@CRLF,),"")
+
+         IF OPEN(1,"$FileName", 5)= 0
+            $out = WriteLine(1, $user.givenName+"*"+$user.initials+"*"+$user.sn+"*"+$user.displayname+"*"+
+            $MyDescription+"*"+$user.physicalDeliveryOfficeName+"*"+$user.telephoneNumber+"*"+$mymail+"*"+
+            $user.wWWHomePage+"*"+$user.url+"*"+$StreetValue+"*"+$user.postOfficeBox+"*"+$user.l+"*"+
+            $user.st+"*"+$user.postalCode+"*"+$user.c+"*"+$user.sAMAccountName+"*"+$user.userPrincipalName+
+            "*"+$user.userWorkstations+"*"+$user.profilePath+"*"+$user.scriptPath+"*"+$user.homeDrive+"*"+
+            $user.homeDirectory+"*"+$user.homePhone+"*"+$user.pager+"*"+$user.mobile+"*"+
+            $user.facsimileTelephoneNumber+"*"+$user.ipPhone+"*"+$user.otherTelephone+"*"+$MyTelephoneNotes+
+            "*"+$user.title+"*"+$user.department+"*"+$user.company+"*"+$mymanager+"*"+$all+"*"+@crlf)
+            $x = CLOSE(1)
+         ENDIF
+
+      Next
+   Next
+EndFunction
+
+;---------------------------------------------------------------------
+; TranslateName ($InitType, $BindName, $LookupNameType, $LookupName, $ReturnNameType)
+;---------------------------------------------------------------------
+;FUNCTION         TranslateName()
+; TranslateName() - converts a name from one type to another 
+;
+;AUTHOR           Howard A. Bullock (hbullock@tycoelectronics.com)
+;
+;VERSION          2.0
+;
+;ACTION           Translates from one name type to another. Good for converting an NT4 name
+;                 like domain\user into an LDAP distinguished name or the reverse.
+;
+;SYNTAX           TranslateName ($InitType, $BindName, $LookupNameType, $LookupName, $ReturnNameType)
+;
+;PARAMETERS       $InitType (Required)
+;                  -  Integer value
+;                     1 = ADS_NAME_INITTYPE_DOMAIN
+;                     Initializes a NameTranslate object by setting the domain that the object will bind to.
+;
+;                     2 = ADS_NAME_INITTYPE_SERVER
+;                     Initializes a NameTranslate object by setting the server that the object will bind to.
+;
+;                     3 = ADS_NAME_INITTYPE_GC
+;                     Initializes a NameTranslate object by locating the global catalog to which the object
+;                     will bind.
+;
+;                 $BindName (Required)
+;                  -  String value
+;                     If an $InitType = 3 (ADS_NAME_INITTYPE_GC), then the $BindName = "".
+;                     InitTypes 1 and 2 require a name of a domain or server to be input. 
+;                     Note: "" may default to the current server or domain.
+;
+;                 $LookupNameType (Required)
+;                  -  Integer value
+;
+;                 $LookupName (Required)
+;                  -  String value see below
+;
+;                 $ReturnNameType (Required)
+;                  -  Integer value see below
+;
+;                  Documentation of Name Types. Lookup the more info on http://MSDN.Microsoft.com
+;                  Not all name types work. "1", "2", and "3" have been the most useful. 
+;
+;                 1 = ADS_NAME_TYPE_1779
+;                 Name format as specified in RFC 1779. For example, "CN=Jane Doe,CN=users, DC=Microsoft, DC=com".
+;
+;                 2 = ADS_NAME_TYPE_CANONICAL
+;                    Canonical name format. For example, "Microsoft.com/Users/Jane Doe".
+;
+;                 3 = ADS_NAME_TYPE_NT4
+;                 Account name format used in MicrosoftR Windowsc NTR 4.0. For example, "Microsoft\JaneDoe".
+;
+;                 4 = ADS_NAME_TYPE_DISPLAY
+;                 Display name format. For example, "Jane Doe".
+;
+;                 5 = ADS_NAME_TYPE_DOMAIN_SIMPLE
+;                 Simple domain name format. For example, "JaneDoe@Microsoft.com".
+;
+;                 6 = ADS_NAME_TYPE_ENTERPRISE_SIMPLE
+;                 Simple enterprise name format. For example, "JaneDoe@Microsoft.com".
+;
+;                 7 = ADS_NAME_TYPE_GUID
+;                 Global Unique Identifier format. For example, {95ee9fff-3436-11d1-b2b0-d15ae3ac8436}.
+;
+;                 8 = ADS_NAME_TYPE_UNKNOWN
+;                 Unknown name type. The system will try to make the best guess.
+;
+;                 9 = ADS_NAME_TYPE_USER_PRINCIPAL_NAME
+;                 User principal name format. For example, "JaneDoe@Fabrikam.com".
+;
+;                 10 = ADS_NAME_TYPE_CANONICAL_EX
+;                 Extended canonical name format. For example, "Microsoft.com/Users Jane Doe".
+;
+;                 11 = ADS_NAME_TYPE_SERVICE_PRINCIPAL_NAME
+;                 Service principal name format. For example, "www/www.microsoft.com@microsoft.com"
+;
+;                 12 = ADS_NAME_TYPE_SID_OR_SID_HISTORY_NAME
+;                 A SID string, as defined in the Security Descriptor Definition Language (SDDL), for either
+;                 the SID of the current object or one from the object's SID history.
+;                 For example, "O:AOG :DAD:(A;;RPWPCCDCLCSWRCWDWOGA;;;S-1-0-0)" For more information see
+;                 Security Descriptor String Format under "Security" in the Microsoft Platform SDK documentation.
+;
+;REMARKS          Not name types seem to work.
+;
+;RETURNS          This function returns an ARRAY of three values:
+;                               Name of the type specified by $ReturnNameType (String)
+;                               Error number (Long Integer)
+;                               Error text (String).
+;
+;DEPENDENCIES     OS: Active Directory aware client
+;
+;EXAMPLES         $DN = TranslateName (3, "", 3, "@Domain\@wksta$", 1)
+;                 ? "DN = " + $DN[0]
+;                 ? "Error = " + $DN[1]
+;                 ? "ErrorText = " + $DN[2]
+;
+;                 $DN = TranslateName (3, "", 3, "@LDomain\@userid", 1)
+;                 ? "DN = " + $DN[0]
+;                 ? "Error = " + $DN[1]
+;                 ? "ErrorText = " + $DN[2]
+;
+;
+;---------------------------------------------------------------------
+Function TranslateName ($InitType, $BindName, $LookupNameType, $LookupName, $ReturnNameType)
+   Dim $InitType, $BindName, $LookupNameType, $LookupName, $ReturnNameType
+   Dim $NameTranslate, $ReturnName, $Error, $ErrorText
+;begin
+   $Error = 0
+   $ErrorText = ""
+   $ReturnName = ""
+   $NameTranslate = CREATEOBJECT ("NameTranslate")
+   $Error = @error
+   $ErrorText = @serror
+   if $Error = 0
+      $NameTranslate.Init ($InitType, $BindName)
+      $Error = @error
+      $ErrorText = @serror
+      if $Error = 0
+         $NameTranslate.Set ($LookupNameType, $LookupName)
+         $Error = @error
+         $ErrorText = @serror
+         if $Error = 0
+            $ReturnName = $NameTranslate.Get($ReturnNameType)
+            $Error = @error
+            $ErrorText = @serror
+         endif
+      endif
+   endif
+   $TranslateName = $ReturnName, $Error, $ErrorText
+Endfunction
+
+
+;---------------------------------------------------------------------
+; MakePathsFromADlocation ($Domain, $Account)
+;---------------------------------------------------------------------
+;Function:  MakePathsFromADlocation
+;Category:  General
+;Action:  Use TranslateName() to return the Conical Name of an account from the ActiveDirectory. The concical name is then split up and the parts are used to build a series of directory paths that are stored in an array. Certain characters that are invalid in in directory names are removed from the conical name and are not included in the final path. This array of paths can be used to execute subscripts for specific collections of users or computers based on domain and OU hierachy.
+;Syntax  MakePathsFromADlocation($Domain, $Account)
+;Parameters:  Name Type  Optional  Description 
+;$Domain String  Required  NetBIOS domain name 
+;$Account String  Required  User or Computer account 
+;Remarks:  This function is called to build various paths that leverage the AD OU hierachy of where the account resides.
+;Returns:  Array
+;Dependencies:  TranslateName UDF
+;Examples:  $Paths = MakePathsFromADlocation(@LDomain, @UserID)
+;$Paths = MakePathsFromADlocation(@Domain, @wksta + '$$')
+;---------------------------------------------------------------------
+Function MakePathsFromADlocation ($Domain, $Account)
+   Dim $Conicalname, $char, $piece, $path[0]
+    
+   ;retrieve conical name from AD's global catalog
+   $Conicalname = TranslateName (3, "", 3, $Domain + "\" + $Account, 2)
+   If $Conicalname[1] = 0
+      ;Remove characters that are invalid in directory names.
+      $chars = '\/', '\', ':', '*', '?', '"', '<', '>', '|'
+      for each $char in $chars
+         ; JOIN requires KiXtart 4.11 or higher.
+         ;$Conicalname[0] = join(split($Conicalname[0], $char),"")
+            
+         ;Start KiXtart 4.02 compatible code for JOIN replacement
+         Dim $temp
+         for each $piece in split($Conicalname[0], $char)
+            $temp = $temp + $piece
+         next
+         $Conicalname[0] = $temp
+         ;End KiXtart 4.02 compatible code for JOIN replacement
+      next
+        
+        
+      ; Build and array of directory paths
+      ; Stripping off the domain and the (computer or user)
+        
+      ; split full name into pieces (directories names)
+      $piece = split($Conicalname[0], "/")
+      ReDim $path[ubound($piece)-1]
+      $path[0] = "netlogon";
+      for $i=1 to ubound($path)
+         $path[$i] = $path[$i-1] + "\" + $piece[$i]
+      next
+   Else
+      $path =""
+      WriteLog('Error: MakePathsFromADlocation ($Domain, $Account)')
+      WriteLog('Error: ' + $Conicalname[1] + " " + $Conicalname[2] + " (TranslateName)")
+   Endif
+   $MakePathsFromADlocation = $path
+Endfunction
+
+ 

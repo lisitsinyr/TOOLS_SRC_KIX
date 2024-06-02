@@ -1,0 +1,3123 @@
+;===============================================================
+; LUFile.kxl
+;===============================================================
+; UnPack   ($FileName)
+; BacDirs  ($ASourcePath, $ADestPath, $ACheckSize)
+; BacFiles ($ASourcePath, $ADestPath, $AMask, $ACheckSize, optional $ADestPathDelta, optional $Delete, optional $OverwriteNewer)
+; BacFile  ($ASourcePath, $ADestPath, $AMask, $ACheckSize, optional $ADestPathDelta, optional $Delete, optional $OverwriteNewer)
+; SyncFile ($Array, optional $Delete, optional $OverwriteNewer)
+; FileVersion ($File)
+; Associate($Extension, $Type, $Description, $OCmd, OPTIONAL $ECmd, OPTIONAL $AddFlag, OPTIONAL $System)
+; CreateLink ($CommandLine, $Name, $IconFile, $IconIndex, $WorkDir, $Minimize, $Replace, $RunInOwnSpace)
+; CreateLinkLU ($shortcutname,$targetpath,optional $arguments, optional $startdir, optional $iconpath, optional $style,optional $description)
+; wshShortCut($shortcutname,$targetpath,optional $arguments, optional $startdir, optional $iconpath, optional $style,optional $description)
+; DelDir($Pathname, $Log, $LogFile)
+; GetFileName($filespec)
+; GetFileNameWithoutExt($filespec)
+; GetFileExt($filespec)
+; GetFilePath($filespec, optional $seg)
+; Function PathSplit($Path)
+;---------------------------------------------------------------------------------------------
+; shellcmd($commandstring, optional $forcewait)
+; UnPackFile($FileName)
+; UnPack($FileName)
+; function FileAction($file,$action)
+; RegServer ($ADestPath, $AServer, optional $ASourcePath)
+; Cat($Filename)
+; CheckDestFileName ($FileName, $DestPath, $NLimit)
+;---------------------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+;  BacDirs ($ASourcePath, $ADestPath, $ACheckSize)
+;-------------------------------------------------------------------------------
+function BacDirs ($ASourcePath, $ADestPath, $ACheckSize)
+;begin
+   IF $LSourcePath = 0
+      if IsDeclared ($ASourcePath)
+         $LSourcePath = $ASourcePath
+      else
+         Exit 1
+      endif
+   ENDIF
+   IF $LDestPath = 0
+      if IsDeclared ($ADestPath)
+         $LDestPath = $ADestPath
+      else
+         Exit 1
+      endif
+   ENDIF
+   $LMask = "*.*"
+   if IsDeclared ($ACheckSize)
+      $LCheckSize = $ACheckSize
+   else
+      $LCheckSize = False
+   endif
+
+   $LFile = Dir ($ASourcePath+"\"+$LMask)
+   WHILE @ERROR = 0 AND $LFile
+      IF $LFile <> "." AND $LFile <> ".."
+         IF GetFileAttr ($ASourcePath + "\" + $LFile) & 16    ; is it a directory ?
+            $LSourcePath = $ASourcePath
+            $LDestPath = $ADestPath
+
+            $LSourcePath = $ASourcePath + "\" + $LFile
+            $LDestPath = $ADestPath + "\" + $LFile
+
+            BacDirs($LSourcePath, $LDestPath, $ACheckSize)
+
+            $ASourcePath = $LSaveLSourcePath
+            $ADestPath = $LSaveLDestPath
+         else
+            $LFileNameSource = $ASourcePath + "\" + $LFile
+            $LFileNameDest = $ADestPath + "\" + $LFile
+            IF 0=EXIST($ADestPath)
+               MD $ADestPath
+            ENDIF
+            $LCopy = False
+            $LResult = CompareFileTimes($LFileNameSource, $LFileNameDest)
+            if $Result = 1 Or $LResult = -3
+               $LCopy = True
+            else
+               $LFileSizeSource = GetFileSize ($LFileNameSource)
+               $LFileSizeDest = GetFileSize ($LFileNameDest)
+               if ($LCheckSize=True) and ($LFileSizeSource<>$LFileSizeDest)
+                  $LCopy = True
+               endif
+            endif
+            if $LCopy = True
+               ? $LFileNameSource+" => "+$LFileNameDest+" ..."
+               Copy $LFileNameSource $LFileNameDest /r
+            endif
+         endif
+      endif
+      if @ERROR = 0
+         $LFile = Dir("")
+      endif
+   loop
+EndFunction
+
+;---------------------------------------------------------------------------------------------
+; DelDir($Pathname, optional $Log, optional $LogFile)
+;---------------------------------------------------------------------------------------------
+;DelDir() - Delete all files and subdirectories 
+;  
+;---------------------------------------------------------------------------------------------
+Function DelDir($PathName, optional $Log, optional $LogFile)
+;begin
+   $Level = $Level + 1
+   $FileName = Dir($PathName + "\"+"*.*")
+   While $FileName <> "" And @ERROR = 0
+      If $FileName <> "." And $Filename <> ".."
+         If (GetFileAttr($PathName + "\" + $FileName) & 16)
+
+            DelDir($PathName + "\" + $FileName, $Log, $LogFile)
+
+            SetFileAttr($PathName + "\" + $FileName, 128)
+         Else
+            SetFileAttr($Pathname + "\" + $Filename, 128)
+            if $Debug
+               if $Log LogAdd($Log,$LogFile,"I","Delete file ... "+$FileName) endif
+            endif
+            Del ($PathName + "\" + $FileName)
+         EndIf
+      EndIf
+      if @ERROR = 0
+         $FileName = Dir("")
+      endif
+   Loop
+   $Level = $Level - 1
+   if $Level > 0
+      if $Debug
+         if $Log LogAdd($Log,$LogFile,"I", "Delete dir  ... "+$PathName) endif
+      endif
+      Rd ($PathName + "\" + $FileName)
+   endif
+EndFunction
+
+;-------------------------------------------------------------------------------
+; ScanFile ($ASourcePath, $ADestPath, $AMask, optional $ACheckSize, optional $ADestPathDelta, optional $Delete, optional $ExecFunc, optional $ExecFuncPAR1, optional $OverwriteNewer)
+;-------------------------------------------------------------------------------
+function ScanFile ($ASourcePath, $ADestPath, $AMask, optional $ACheckSize, optional $ADestPathDelta, optional $Delete, optional $ExecFunc, optional $OverwriteNewer, optional $ExecFuncPAR1)
+   Dim $LResult
+;begin
+   $LFile = Dir ($ASourcePath+"\"+$AMask)
+
+   IF EXIST($ADestPath)=0
+      MD $ADestPath
+   ENDIF
+
+   if $ADestPathDelta
+      IF EXIST($ADestPathDelta)=0
+         MD $ADestPathDelta
+      ENDIF
+   endif
+
+   WHILE (@ERROR = 0) AND $LFile
+
+      IF $LFile <> "." AND $LFile <> ".."
+
+         $LAttr = GetFileAttr ($ASourcePath + "\" + $LFile)
+
+         if $Debug
+            LogAdd ("3", $LogFile, "F", $ASourcePath+"\"+$LFile+"_"+$LAttr, "w+/n")
+         endif
+
+         IF ($LAttr & 16)=0
+            $LFileNameSource = $ASourcePath + "\" + $LFile
+            $LFileSizeSource = GetFileSize ($LFileNameSource)
+            $LFileTimeSource = GetFileTime ($LFileNameSource)
+            $LFileNameDest   = $ADestPath + "\" + $LFile
+            if $ADestPathDelta
+               $LFileNameDestDelta = $ADestPathDelta + "\" + $LFile
+            endif
+
+            ;--------------------------------------------------------------------
+            $LResult = CompareFileTimes($LFileNameSource, $LFileNameDest)
+            if $Debug
+               LogAdd ("3", $LogFile, "F", "LResult="+$LResult, "w+/n")
+            endif
+
+            ;--------------------------------------------------------------------
+            ; Check Result
+            ;--------------------------------------------------------------------
+            $LCopy = False
+            $LDelete = False
+            if $Delete 
+               if $LResult = -3
+                  $LDelete = True
+               endif
+            else
+               if $LResult = -3
+                  $LFileSizeDest = "new"
+                  $LFileTimeDest = "new"
+                  $LCopy = True
+               else
+                  $LFileSizeDest = GetFileSize ($LFileNameDest)
+                  $LFileTimeDest = GetFileTime ($LFileNameDest)
+                  if $LResult = 1 
+                     $LCopy = True
+                  else
+                     if ($LResult = -1) and ($OverwriteNewer=1) 
+                        $warnOWN = "More recent dest file " + $LFileNameDest + " is to be overwritten"
+                        LogAdd ("3", $LogFile, "F", $warnOWN, "w+/n")
+                        $LCopy = True
+                     endif
+                     if ($ACheckSize=True) and ($LFileSizeSource<>$LFileSizeDest)
+                        $LCopy = True
+                     endif
+                  endif
+               endif
+            endif
+
+            ;--------------------------------------------------------------------
+            ; Copy
+            ;--------------------------------------------------------------------
+            if $LCopy = True
+               $s = $LFileNameSource + " ("+$LFileSizeSource+"|"+$LFileTimeSource+")" + " => " +
+                    $LFileNameDest   + " ("+$LFileSizeDest+"|"+$LFileTimeDest+")"
+               LogAdd ("3", $LogFile, "F", $s, "w+/n")
+
+               Copy $LFileNameSource $LFileNameDest /r /h
+
+               if $ExecFunc
+
+                  if $ExecFuncPAR1
+                     $s1 = '$$Res = $ExecFunc ($$LFileNameSource, $$LFileNameDest, $$ExecFuncPAR1)'
+                  else
+                     $s1 = '$$Res = $ExecFunc ($$LFileNameSource, $$LFileNameDest)'
+                  endif
+
+                  if $Debug
+                     LogAdd ($Log, $LogFile, "I", $s1)
+                  endif
+                  $ResExe = execute ($s1)
+               endif
+
+               if $ADestPathDelta
+                  $s = $s + " => " + $LFileNameDestDelta
+                  if $Debug
+                     LogAdd ("3", $LogFile, "F", $s)
+                  endif
+                  Copy $LFileNameSource $LFileNameDestDelta /r
+               endif
+            endif
+
+            ;--------------------------------------------------------------------
+            ; Delete
+            ;--------------------------------------------------------------------
+            if $LDelete = True
+               $s = "Delete file "+$LFileNameSource + " ("+$LFileSizeSource+"|"+$LFileTimeSource+")"+" ..."
+               LogAdd ("3", $LogFile, "F", $s, "w+/n")
+               Del $LFileNameSource
+            endif
+
+         endif
+
+      endif
+
+      if @ERROR = 0
+
+         $LFile = Dir("")
+
+         ;if $Debug
+         ;   LogAdd ("3", $LogFile, "F", @SERROR+"_"+@ERROR+"_"+$LFile+"!", "w+/n")
+         ;endif
+
+      endif
+
+   loop
+EndFunction
+
+;-------------------------------------------------------------------------------
+;  ScanDir ($ASourcePath, $ADestPath, $AMask, optional $ACheckSize, optional $ADestPathDelta, optional $Delete, optional $ExecFunc)
+;-------------------------------------------------------------------------------
+function ScanDir ($ASourcePath, $ADestPath, $AMask, optional $ACheckSize, optional $ADestPathDelta, optional $Delete, optional $ExecFunc, optional $OverwriteNewer, optional $ExecFuncPAR1)
+;begin
+   $LFile = Dir ($ASourcePath+"\*.*")
+   WHILE @ERROR = 0 AND $LFile
+      IF $LFile <> "." AND $LFile <> ".."
+         IF GetFileAttr ($ASourcePath + "\" + $LFile) & 16    ; is it a directory ?
+
+            $LSourcePath = $ASourcePath + "\" + $LFile
+            $LDestPath = $ADestPath + "\" + $LFile
+            if $ADestPathDelta
+               $LDestPathDelta = $ADestPathDelta + "\" + $LFile
+               if $Debug
+                  LogAdd ("3", $LogFile, "D", $LSourcePath+" => "+$LDestPath+" "+$LDestPathDelta)
+               endif
+            else
+               $LDestPathDelta = ""
+            endif
+
+            ScanFile($LSourcePath, $LDestPath, $AMask, $ACheckSize, $LDestPathDelta, $Delete, $ExecFunc, $OverwriteNewer, $ExecFuncPAR1)
+            ScanDir($LSourcePath, $LDestPath, $AMask, $ACheckSize, $LDestPathDelta, $Delete, $ExecFunc, $OverwriteNewer, $ExecFuncPAR1)
+         endif
+      endif
+      if @ERROR = 0
+         $LFile = Dir("")
+      endif
+   loop
+EndFunction
+
+;-------------------------------------------------------------------------------
+;  BacFiles ($ASourcePath, $ADestPath, $AMask, optional $ACheckSize, optional $ADestPathDelta, optional $Delete, optional $ExecFunc, optional $OverwriteNewer)
+;-------------------------------------------------------------------------------
+function BacFiles ($ASourcePath, $ADestPath, $AMask, optional $ACheckSize, optional $ADestPathDelta, optional $Delete, optional $ExecFunc, optional $OverwriteNewer, optional $ExecFuncPAR1)
+;begin
+   if ($ASourcePath <> "") and ($ADestPath <> "")
+      if $Debug
+         LogAdd ($Log, $LogFile, "I", "BacFiles: "+$ASourcePath+" => "+$ADestPath+" "+$AMask, "w+/n")
+      endif
+      ScanFile($ASourcePath, $ADestPath, $AMask, $ACheckSize, $ADestPathDelta, $Delete, $ExecFunc, $OverwriteNewer, $ExecFuncPAR1)
+      ScanDir ($ASourcePath, $ADestPath, $AMask, $ACheckSize, $ADestPathDelta, $Delete, $ExecFunc, $OverwriteNewer, $ExecFuncPAR1)
+   endif
+EndFunction
+
+;-------------------------------------------------------------------------------
+;  BacFile ($ASourcePath, $ADestPath, $AMask, optional $ACheckSize, optional $ADestPathDelta, optional $Delete, optional $ExecFunc, optional $OverwriteNewer)
+;-------------------------------------------------------------------------------
+function BacFile ($ASourcePath, $ADestPath, $AMask, optional $ACheckSize, optional $ADestPathDelta, optional $Delete, optional $ExecFunc, optional $OverwriteNewer, optional $ExecFuncPAR1)
+;begin
+   if ($ASourcePath <> "") and ($ADestPath <> "")
+      if $Debug
+         LogAdd ($Log, $LogFile, "I", "BacFile: "+$ASourcePath+" => "+$ADestPath+" "+$AMask, "w+/n")
+      endif
+      ScanFile($ASourcePath, $ADestPath, $AMask, $ACheckSize, $ADestPathDelta, $Delete, $ExecFunc, $OverwriteNewer, $ExecFuncPAR1)
+   endif
+EndFunction
+
+;-------------------------------------------------------------------------------
+; SyncFile($Array, optional $Delete, optional $OverwriteNewer)
+;-------------------------------------------------------------------------------
+function SyncFile($Array, optional $Delete, optional $OverwriteNewer)
+;begin
+   ;LogAdd($Log, $LogFile, "I", "Array="+UBound($Array))
+   for Each $Item in $Array
+      ;LogAdd($Log, $LogFile, "I", "Item="+UBound($Item))
+      if UBound($Item) > 0
+         if ($Item[0] <> "") and ($Item[1] <> "")
+            LogAdd($Log, $LogFile, "I", $Item[0]+"\"+$Item[2]+" => "+$Item[1])
+            ;---------------------------------------
+            ;
+            ;---------------------------------------
+            if UBound($Item) > 3
+               if UCase($Item[3]) = "S"
+                  ;---------------------------------------
+                  ; with subdir
+                  ;---------------------------------------
+                  if UBound($Item) > 4
+                     BacFiles ($Item[0], $Item[1], $Item[2], True, , 0,  $Item[4], $OverwriteNewer, $Item[5])
+                  else
+                     BacFiles ($Item[0], $Item[1], $Item[2], True, , 0,  $Item[4], $OverwriteNewer,)
+                  endif
+               else                                                             
+                  if UBound($Item) > 4
+                     BacFile  ($Item[0], $Item[1], $Item[2], True, , 0,  $Item[4], $OverwriteNewer, $Item[5])
+                  else
+                     BacFile  ($Item[0], $Item[1], $Item[2], True, , 0,  $Item[4], $OverwriteNewer,)
+                  endif
+               endif
+            else
+               if UCase($Item[3]) = "S"
+                  ;---------------------------------------
+                  ; with subdir
+                  ;---------------------------------------
+                  BacFiles ($Item[0], $Item[1], $Item[2], True, , 0, , $OverwriteNewer,)
+               else
+                  BacFile  ($Item[0], $Item[1], $Item[2], True, , 0, , $OverwriteNewer,)
+               endif
+            endif
+      
+            ;---------------------------------------
+            ;
+            ;---------------------------------------
+            if $Delete
+               LogAdd($Log, $LogFile, "I", "Delete ..."+$Item[1]+"\"+$Item[2]+" "+$Item[0])
+               if UCase($Item[3]) = "S"
+                  ;---------------------------------------
+                  ; with subdir
+                  ;---------------------------------------
+                  BacFiles ($Item[1], $Item[0], $Item[2], , , 1, , $OverwriteNewer,)
+               else
+                  BacFile ($Item[1], $Item[0], $Item[2], , , 1, , $OverwriteNewer,)
+               endif
+            endif
+
+         endif   
+      else
+         ;---------------------------------------------------
+         LogAdd($Log, $LogFile, "I", $Item)
+         ;---------------------------------------------------
+      endif
+   next
+EndFunction
+
+;-------------------------------------------------------------------------------
+;  DelFile ($ASourcePath, $AMask, $Day)
+;-------------------------------------------------------------------------------
+function DelFile ($ASourcePath, $AMask, $Day)
+   Dim $LResult
+;begin
+   $LFile = Dir ($ASourcePath+"\"+$AMask)
+   $L_Day = EncodeDate(@Year,@MonthNo,@MDayNo)
+   WHILE @ERROR = 0 AND $LFile
+      IF $LFile <> "." AND $LFile <> ".."
+         IF (GetFileAttr ($ASourcePath + "\" + $LFile) & 16)=0
+            $LFileNameSource = $ASourcePath + "\" + $LFile
+            $LFileSizeSource = GetFileSize ($LFileNameSource)
+            $LFileTimeSource = GetFileTime ($LFileNameSource)
+            $Y = Val(SUBSTR($LFileTimeSource,1,4))
+            $M = Val(SUBSTR($LFileTimeSource,6,2))
+            $D = Val(SUBSTR($LFileTimeSource,9,2))
+            $LFileDaySource = EncodeDate($Y,$M,$D)
+            $LDel = 0
+            if (($L_Day-$LFileDaySource) => $Day) $LDel = 1 endif
+            if $LDel
+               Del $LFileNameSource
+               LogAdd ("3", $LogFile, "I", "Delete "+$LFileNameSource+" "+$LFileTimeSource+" Error="+@ERROR+" "+@SError)
+            endif
+         endif
+      endif
+      if (@ERROR = 0) or (@ERROR = 5)
+         $LFile = Dir("")
+      endif
+   loop
+EndFunction
+
+;-------------------------------------------------------------------------------
+;  ListFile ($ASourcePath, $AMask, optional $OutFile, optional $Option, optional $FuncFile)
+;-------------------------------------------------------------------------------
+function ListFile ($ASourcePath, $AMask, optional $OutFile, optional $Option, optional $FuncFile)
+   Dim $LResult
+;begin
+   if ($OutFile) and (UCase($OutFile) <> "CONSOLE")
+      $HandleFile = FreeFileHandle
+      $Res = Open ($HandleFile, $OutFile, 1+4)
+   endif
+
+   $LDay = EncodeDate(@Year,@MonthNo,@MDayNo)
+   $LFile = Dir ($ASourcePath+"\"+$AMask)
+
+   WHILE @ERROR = 0 AND $LFile
+      IF $LFile <> "." AND $LFile <> ".."
+         IF (GetFileAttr ($ASourcePath + "\" + $LFile) & 16)=0
+            $ListFile = $ListFile + 1
+            $LFileNameSource = $ASourcePath + "\" + $LFile
+            $LFileSizeSource = GetFileSize ($LFileNameSource)
+            $LFileTimeSource = GetFileTime ($LFileNameSource)
+
+            if $OutFile
+               if UCase($OutFile) = "CONSOLE"
+                  select
+                     case $Option = 1 or $Option = 11
+                        ? $LFile
+                     case $Option = 2 or $Option = 12
+                        ? $LFileNameSource+" "+$LFileTimeSource+" "+$LFileSizeSource
+                  endselect
+               else
+                  select
+                     case $Option = 1 or $Option = 11
+                        $Res = WriteLine ($HandleFile, $LFile+@CRLF)
+                     case $Option = 2 or $Option = 12
+                        $Res = WriteLine ($HandleFile, $LFileNameSource+" "+$LFileTimeSource+" "+$LFileSizeSource+" "+$ListFile+@CRLF)
+                  endselect
+               endif
+            endif
+
+            ;---------------------------------------------------------------------------------------
+            ;select
+            ;   case $Option = 1 or $Option = 11
+            ;      if $FuncFile
+            ;         $s = '$$Res = $FuncFile ($ListFile,"$LFile",,)'
+            ;         $ResExe = execute ($s)
+            ;      endif
+            ;   case $Option = 2 or $Option = 12
+            ;      if $FuncFile
+            ;         $s = '$$Res = $FuncFile ($ListFile, "$LFileNameSource", "$LFileTimeSource", "$LFileSizeSource")'
+            ;         $ResExe = execute ($s)
+            ;      endif
+            ;endselect
+            ;---------------------------------------------------------------------------------------
+
+            if $FuncFile
+               $s = '$$Res = $FuncFile ($$ListFile, $$LFileNameSource, $$LFileTimeSource, $$LFileSizeSource)'
+               $ResExe = execute ($s)
+            endif
+
+            ;--------------------------------------------------------------------------------
+            ;$Y = Val(SUBSTR($LFileTimeSource,1,4))
+            ;$M = Val(SUBSTR($LFileTimeSource,6,2))
+            ;$D = Val(SUBSTR($LFileTimeSource,9,2))
+            ;$LFileDaySource = EncodeDate($Y,$M,$D)
+            ;--------------------------------------------------------------------------------
+
+         endif
+      endif
+
+      if (@ERROR = 0) or (@ERROR = 5)
+         $LFile = Dir("")
+      endif
+   loop
+
+   if ($OutFile) and (UCase($OutFile) <> "CONSOLE")
+      $Res = Close ($HandleFile)
+   endif
+
+EndFunction
+
+;-------------------------------------------------------------------------------
+;  ListDir ($ASourcePath, $AMask, optional $OutFile, optional $Option, optional $FuncDir, optional $FuncFile)
+;-------------------------------------------------------------------------------
+function ListDir ($ASourcePath, $AMask, optional $OutFile, optional $Option, optional $FuncDir, optional $FuncFile)
+;begin
+   $Level = $Level + 1
+   $DirCount = $DirCount + 1
+
+   ; $FileCount = ListFile($aSourcePath, $AMask, $OutFile, $Option, $FuncFile)
+
+   if $Option = 10 or $Option = 11 or $Option = 12
+      if ($OutFile) and (UCase($OutFile) <> "CONSOLE")
+         $HandleDir = FreeFileHandle
+         $Res = Open ($HandleDir, $OutFile, 1+4)
+      endif
+      if $OutFile
+         if UCase($OutFile) = "CONSOLE"
+            ? $ASourcePath
+         else
+            $Res = WriteLine ($HandleDir, $ASourcePath+" "+$DirCount+@CRLF)
+         endif
+      endif
+      if ($OutFile) and (UCase($OutFile) <> "CONSOLE")
+         $Res = Close ($HandleDir)
+      endif
+   endif
+
+   $LFile = Dir ($ASourcePath+"\*.*")
+   WHILE @ERROR = 0 AND $LFile
+      IF $LFile <> "." AND $LFile <> ".."
+         IF GetFileAttr ($ASourcePath + "\" + $LFile) & 16    ; Это каталог....
+            $LSourcePath = $ASourcePath + "\" + $LFile
+
+            $FileCount = ListFile($LSourcePath, $AMask, $OutFile, $Option, $FuncFile)
+            if $FuncDir
+               $s = '$$Res = $FuncDir ($$DirCount, $$LSourcePath, $$FileCount)'
+               $ResExe = execute ($s)
+            endif
+
+            ListDir ($LSourcePath, $AMask, $OutFile, $Option, $FuncDir, $FuncFile)
+
+            $Level = $Level - 1
+         endif
+      endif
+      if (@ERROR = 0) 
+         $LFile = Dir("")
+      endif
+   loop
+EndFunction
+
+;-------------------------------------------------------------------------------
+;  DirFile ($ASourcePath, $AMask, optional $OutFile)
+;-------------------------------------------------------------------------------
+function DirFile ($ASourcePath, $AMask, optional $OutFile)
+   Dim $LResult
+;begin
+   if $OutFile
+      del $OutFile
+      $Handle = FreeFileHandle
+      Open ($Handle, $OutFile, 1+4)
+   endif
+   $LDay = EncodeDate(@Year,@MonthNo,@MDayNo)
+   $LFile = Dir ($ASourcePath+"\"+$AMask)
+   WHILE @ERROR = 0 AND $LFile
+      IF $LFile <> "." AND $LFile <> ".."
+         IF (GetFileAttr ($ASourcePath + "\" + $LFile) & 16)=0
+            $LFileNameSource = $ASourcePath + "\" + $LFile
+            $LFileSizeSource = GetFileSize ($LFileNameSource)
+            $LFileTimeSource = GetFileTime ($LFileNameSource)
+            if $OutFile
+               WriteLine ($Handle, $LFile+@CRLF)
+            endif
+            ; LogAdd ("3", $LogFile, "I", $LFile)
+         endif
+      endif
+      if (@ERROR = 0) or (@ERROR = 5)
+         $LFile = Dir("")
+      endif
+   loop
+   if $OutFile
+      Close ($Handle)
+   endif
+EndFunction
+
+
+;-------------------------------------------------------------------------------
+; FileVersion ($File)
+;-------------------------------------------------------------------------------
+;FUNCTION      ArrayGetFileVersion
+;
+;ACTION        Retreive all file version information into an array
+;
+;AUTHOR        Jens Meyer (sealeopard@usa.net)
+;
+;CONTRIBUTORS  Kyder,LLigetfa
+;
+;VERSION       1.0
+;
+;KIXTART       4.12+
+;
+;SYNTAX        ARRAYGETFILEVERSION(FILE)
+;
+;PARAMETERS    FILE
+;              Required string for which you want to get the version string
+;
+;
+;RETURNS       Array of fileversion information, otherwise error code
+;
+;REMARKS       See GetFileVersion() for element indices
+;
+;DEPENDENCIES  none
+;
+;EXAMPLE       $rc = ARRAYGETFILEVERSION("c:\temp\test.sys")
+;
+;KIXTART BBS   http://www.kixtart.org/cgi-bin/ultimatebb.cgi?ubb=get_topic&f=12&t=000393
+;
+;-------------------------------------------------------------------------------
+function FileVersion($File)
+   dim $a[12], $b[12], $c
+;begin
+   $a='Comments','CompanyName','FileDescription','FileVersion','InternalName',
+      'Language','LegalCopyright','LegalTrademarks','OriginalFilename','PrivateBuild',
+      'ProductName','ProductVersion','SpecialBuild'
+   if exist($File)
+      for $c=0 to ubound($a)
+         $b[$c]=getfileversion($sFile,$a[$c])
+      next
+   else
+      exit 2
+   endif
+   $FileVersion=$b
+endfunction
+
+;-------------------------------------------------------------------------------
+; Associate($Extension, $Type, $Description, $OCmd, OPTIONAL $ECmd, OPTIONAL $AddFlag, OPTIONAL $System)
+;-------------------------------------------------------------------------------
+;FUNCTION Associate()
+;
+;ACTION Associates a file extension with a particular action
+;
+;AUTHOR Glenn Barnas / FRIT-EROC
+;
+;SYNTAX Associate(Server, Extension, Type, Description, OPEN command, EDIT command, Add)
+;
+;PARAMETERS Extension - File extension to associate
+; Type - Short FileType description
+; Description - Description of File Type
+; OPEN Command - Command to OPEN (execute) the associated file
+; EDIT Command - Command to EDIT the associated file [optional]
+; ADD - Flag - if set, adds a new Extension to an existing
+; association definition.
+; System - System where association is to be made - null for local system
+;
+;
+;REMARKS 
+;
+;RETURNS nothing
+;
+;DEPENDENCIES None
+;
+;EXAMPLES ; Define a new assocaiation for .KIX
+; Associate(".KIX", "KixScript", "Kixtart Script", "Kix32.exe", "notepad.exe", "", "")
+; ; Add .SCR extension to the KixScript association
+; Associate(".SCR", "KixScript", "", "", "", 1, "")
+;
+;-------------------------------------------------------------------------------
+Function Associate($Extension, $Type, $Description, $OCmd, OPTIONAL $ECmd, OPTIONAL $AddFlag, OPTIONAL $System)
+;begin
+   ; make sure the "dot" is specified
+   If Left($Extension, 1) <> "."
+      $Extension = "." + $Extension
+   EndIf
+
+   ; insure that "$System" has the right format if it's specified
+   If $Server <> ""
+      If Left($System,2) <> "\\" $System = "\\" + $System EndIf
+      If Right($System,1) <> "\" $System = $System + "\" EndIf
+   EndIf
+
+   ; Obtain the Windows System Path value from the target system
+   $WSPath = ReadValue($System + "HKEY_Local_Machine\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "SystemRoot")
+
+   ; Define the Extension
+   $RTN = DelTree($System + "HKEY_CLASSES_ROOT\" + $Extension)
+   $RTN = AddKey($System + "HKEY_CLASSES_ROOT\" + $Extension)
+   $RTN = WriteValue($System + "HKEY_CLASSES_ROOT\" + $Extension, "", $Type, "REG_SZ")
+
+   ; just return if we're adding a new Extension to an existing association
+   If $AddFlag = 0
+      Exit 0
+   EndIf
+
+   ; Create the definitions for the OPEN command
+   $RTN = DelTree($System + "HKEY_CLASSES_ROOT\" + $Type)
+   $RTN = AddKey($System + "HKEY_CLASSES_ROOT\" + $Type)
+   $RTN = AddKey($System + "HKEY_CLASSES_ROOT\" + $Type + "\DefaultIcon")
+   $RTN = AddKey($System + "HKEY_CLASSES_ROOT\" + $Type + "\Shell")
+   $RTN = AddKey($System + "HKEY_CLASSES_ROOT\" + $Type + "\Shell\Open")
+   $RTN = AddKey($System + "HKEY_CLASSES_ROOT\" + $Type + "\Shell\Open\Command")
+   
+   $RTN = WriteValue($System + "HKEY_CLASSES_ROOT\" + $Type, "", $Description, "REG_SZ")
+   $RTN = WriteValue($System + "HKEY_CLASSES_ROOT\" + $Type + "\DefaultIcon", "", $WSPath + "\system32\SHELL32.dll,21", "REG_SZ")
+   $RTN = WriteValue($System + "HKEY_CLASSES_ROOT\" + $Type + "\Shell\Open\Command", "", $OCmd, "REG_EXPAND_SZ")
+
+   ; Create the association for the EDIT command, if specified
+   If $ECmd <> ""
+      $RTN = AddKey($System + "HKEY_CLASSES_ROOT\" + $Type + "\Shell\Edit")
+      $RTN = AddKey($System + "HKEY_CLASSES_ROOT\" + $Type + "\Shell\Edit\Command")
+      $RTN = WriteValue($System + "HKEY_CLASSES_ROOT\" + $Type + "\Shell\Edit\Command", "", $ECmd, "REG_EXPAND_SZ")
+   EndIf
+EndFunction
+
+;----------------------------------------------------------------------------
+; CreateLink ($CommandLine, $Name, $IconFile, $IconIndex, $WorkDir, $Minimize, $Replace, $RunInOwnSpace)
+;----------------------------------------------------------------------------
+;  $Minimize      = [0,1]   
+;  $Replace       = [0,1]   
+;  $RunInOwnSpace = [0,1]   
+;----------------------------------------------------------------------------
+function CreateLink ($CommandLine, $Name, $IconFile, $IconIndex, $WorkDir, $Minimize, $Replace, $RunInOwnSpace)
+;begin
+   $CreateLink = AddProgramItem ($CommandLine, $Name, $IconFile, $IconIndex, $WorkDir, $Minimize, $Replace, $RunInOwnSpace)
+endfunction
+
+;----------------------------------------------------------------------------
+; CreateLinkLU ($Links, $DestPath, $name, $targetpath, optional $arguments, optional $startdir, optional $iconpath, optional $style, optional $description)
+;----------------------------------------------------------------------------
+function CreateLinkLU($Links, $DestPath, $name, $targetpath, optional $arguments, optional $startdir, optional $iconpath, optional $style, optional $description)
+;begin
+   $s = '$links -f "$targetpath" -a "$arguments" -w "$startdir" -i "$iconpath" -d "$DestPath" -n "$Name"'
+   ; ? $s
+   Shell $s
+   $CreateLinkLU = 0
+endfunction
+
+;---------------------------------------------------------------------------------
+; wshShortCut($shortcutname,$targetpath,optional $arguments, optional $startdir, optional $iconpath, optional $style, optional $description)
+;---------------------------------------------------------------------------------
+;Function: 
+; wshShortCut(), 
+; 
+;Authors and Contributors: 
+; Shawn, Radimus, Al_Po, 
+; Richard Farthing, NTDOC 
+; 
+;Version: 
+; 1.3 
+; 
+;Action: 
+; Creates Shortcuts for files or Web pages 
+; 
+;Syntax: 
+; wshShortCut($shortcutname,$targetpath,optional $arguments, optional $startdir, optional $iconpath, optional $style, optional $Description) 
+; 
+;Parameters: 
+; SHORTCUTNAME Required. 
+;    Name of Shortcut. If path is omitted, will be saved to desktop. 
+; TARGETPATH Required. 
+;    The path the target point to. 
+; ARGUMENTS Optional. 
+;    Arguments appended to TARGETPATH 
+; STARTDIR Optional. 
+;    Working Directory 
+; ICONPATH Optional. 
+;    Path to Icon Library. To specify an icon other than the first, separate the icon path with 
+;    ",#" where # represents the icon in the library. 
+; STYLE Optional. 
+;    1 = default, 3 = maximized window, 7 = minimized window 
+; DESCRIPTION Optional. 
+;    Description or Comment about Shortcut 
+; 
+;Remarks: 
+; wshShortCut 1.3
+; - Attempts to create directory structure to shortcut if it does not exist
+; wshShortcut 1.2: 
+; - Support for NoVarsinStrings 
+; - Checks for existence of TargetPath in .lnk files 
+; - Included option for Description (.description) 
+; wshShortcut 1.1: 
+; - fixes a logic bug in wshShortCut 1.0 so you can use more than icons 0-9 in a icon library on URLS. 
+; - Unless path is explicity stated in $ShortCutName, icons are created on the desktop 
+; - If .lnk or .url is omitted, UDF tries to determine the shortcut type, but defaults to .lnk if it can't figure it out. 
+; wshShortCut 1.0 
+; http://www.kixtart.org/ubbthreads/showflat.php?Cat=&Board=UBB12&Number=81769&Forum=UBB12&Words=wshShortcut&Match=Entire%20Phrase&Searchpage=1&Limit=25&Old=allposts&Main=81769&Search=true#Post81769 
+; 
+;Examples: 
+; $=wshShortcut("KiXtart Web Page","http://www.kixtart.org") 
+; $=wshShortcut("Notepad","%systemroot%\system32\notepad.exe") 
+;-----------------------------------------------------------------------------------
+function wshShortCut($shortcutname, $CommandFile, optional $arguments, optional $startdir, optional $iconpath, optional $style, optional $description)
+   dim $shell, $desktop, $shortcut, $index, $iconinfo, $iconindex, $scdir, $pif
+;begin
+   $shell = createobject("wscript.shell")
+   $wshshortcut=""
+   if $shell
+      if ucase(right($shortcutname,4))=".URL" or ucase(right($shortcutname,4))=".LNK"
+         ;do nothing
+      else
+         if ucase(left($CommandFile,5))="HTTP:" or ucase(left($CommandFile,6))="HTTPS:" or ucase(left($CommandFile,4))="FTP:"
+            $shortcutname=$shortcutname + ".url"
+         else
+            $shortcutname=$shortcutname + ".lnk"
+         endif
+      endif
+
+      if instr($shortcutname,".lnk") and not exist($CommandFile)
+         exit 2
+      endif
+
+      if instr($shortcutname,"\")=0
+         $Desktop = $shell.SpecialFolders("Desktop")
+         $shortcutname=$desktop + "\" + $shortcutname
+      else
+         $scdir=substr($shortcutname,1,instrrev($shortcutname,"\"))
+         if not exist($scdir)
+            md $scdir
+            if @error
+               exit @error
+            endif
+         endif
+      endif
+
+      select
+         case (@ProductType = "Windows 98") or (@ProductType = "Windows 95")
+            if instr($shortcutname,".lnk")
+               $pif=substr($shortcutname,1,instrrev($shortcutname,".lnk")-1)+".pif"
+               if Exist ($pif)
+                  Del ($pif)
+               endif 
+            endif
+         case 1
+            if Exist ($shortcutname)
+               Del ($shortcutname)
+            endif 
+      EndSelect
+
+      $shortcut = $shell.createshortcut($shortcutname)
+      if $shortcut
+         $shortcut.targetpath = $CommandFile
+         if $iconpath
+            $shortcut.iconlocation = $iconpath
+         endif
+         if $arguments
+            $shortcut.arguments = $arguments
+         endif
+         if $startdir
+            $shortcut.workingdirectory = $startdir
+         endif
+         if $style
+            $shortcut.windowstyle = $style
+         else
+            $shortcut.windowstyle = 1
+         endif
+         If $description
+            $shortcut.description = $description
+         else
+            $shortcut.description = ""
+         EndIf
+         $shortcut.save
+         if @error
+            exit @error
+         endif
+         if instrrev($shortcutname,".url") and $iconpath
+            $index=instrrev($iconpath,",")
+            if $index=0
+               $iconindex=0
+            else
+               $iconindex=split($iconpath,",")[1]
+               $iconpath=split($iconpath,",")[0]
+            endif
+            $=writeprofilestring($shortcutname,"InternetShortcut","IconFile",$iconpath)
+            $=writeprofilestring($shortcutname,"InternetShortcut","IconIndex",$iconindex)
+         else
+            ;--------------------------------------------------------------------------
+            ;select
+            ;   case (@ProductType = "Windows 98") or (@ProductType = "Windows 95")
+            ;      if instr($shortcutname,".lnk")
+            ;         $pif=substr($shortcutname,1,instrrev($shortcutname,".lnk")-1)+".pif"
+            ;         if Exist ($pif)
+            ;            Move $pif $shortcutname
+            ;         endif 
+            ;      endif
+            ;   case 1
+            ;EndSelect
+            ;--------------------------------------------------------------------------
+         endif
+         ;$wshshortcut=$shortcut.FullName
+         $wshshortcut = 0
+         $shortcut = 0
+      else
+         exit @error
+      endif 
+   else
+      exit @error
+   endif 
+endfunction 
+
+;-------------------------------------------------------------------------------
+; GetFileName($filespec)
+;-------------------------------------------------------------------------------
+;
+;Category:  
+;   File, Folder, Disk, & Printers
+;
+;Action:  
+;   Returns the filename-only portion of a given filespec.
+;
+;Syntax:  
+;   GetFileName ( "filespec" )
+;
+;Parameters:  
+;   Name Type  Optional  Description 
+;   filespec  String  Required  The filespec (path) you wish to extract the filename from.  
+;
+;Remarks:  
+;   The filespec must contain either a backslash "\" or a period ".", otherwise the complete filespec passed as the argument is returned intact.
+;   Requires KiXtart 2001 (4.0) final due to InstrRev( ) function.
+;
+;Returns:
+;   Returns the filename extracted from the filespec. 
+;   Complimentary to the GetFileExt( ) and GetFilePath( ) UDFs.
+;
+;Dependencies:
+;   None.
+;
+;Examples:
+;   ? GetFileName('%temp%\myfile.txt')
+;   ? GetFileName('myfile.txt')
+;   ? GetFileName('\\server\share\myfile')
+;-------------------------------------------------------------------------------
+function GetFileName($filespec)
+   dim $bash
+   $GetFileName=$filespec
+   $bash=instrRev($filespec,'\')
+   if $bash or instrRev($filespec,'.')
+      $GetFileName=substr($filespec,$bash+1)
+   endif
+endfunction
+
+;-------------------------------------------------------------------------------
+; GetFileNameWithoutExt($filespec)
+;-------------------------------------------------------------------------------
+function GetFileNameWithoutExt($filespec)
+   dim $bash
+   $GetFileNameWithoutExt = $filespec
+   $bash1 = instrRev($filespec,'\')
+   $bash2 = instrRev($filespec,'.')
+   select
+      case $bash1 and $bash2
+         $GetFileNameWithoutExt = substr($filespec, $bash1+1, $bash2-$bash1-1)
+      case $bash1 and (not $bash2)
+         $GetFileNameWithoutExt = substr($filespec, $bash1+1)
+      case (not $bash1) and $bash2
+         $GetFileNameWithoutExt = substr($filespec, $bash1+1, $bash2-$bash1-1)
+   endselect
+endfunction
+
+;---------------------------------------------------------------------------------------------
+; GetFileExt($filespec)
+;---------------------------------------------------------------------------------------------
+;Category:  File, Folder, Disk, & Printers
+;Action:  Returns only the filename's extension, given a filespec.
+;Syntax:  GetFileExt ( "filespec" )
+;Parameters:  
+;   Name Type  Optional  Description 
+;   filespec  String  Required  The filespec you wish to extract the filename's extension from.  
+;Remarks:  
+;   Complimentary to the GetFileName( ) and GetFilePath( ) UDFs.
+;   Requires KiXtart 2001 (4.0) final due to InstrRev( ) function.
+;Returns:
+;   Returns the filename's extension extracted from the filespec. If there is no extension, an empty string is returned.
+;Dependencies:
+;   None.
+;Examples:
+;   ? GetFileExt('%temp%\myfile.txt')
+;   ? GetFileExt('myfile.txt')
+;   ? GetFileExt('\\server\share\myfile.html')
+;---------------------------------------------------------------------------------------------
+function GetFileExt($filespec)
+   dim $dot
+   $GetFileExt=''
+   $dot=instrRev($filespec,'.')
+   if $dot
+      $GetFileExt=substr($filespec,$dot+1)
+   endif
+endfunction
+
+;---------------------------------------------------------------------------------------------
+; GetFilePath($filespec, optional $seg)
+;---------------------------------------------------------------------------------------------
+;FUNCTION      GetFilePath
+;
+;AUTHOR        ScriptLogic
+;              Modified by Jens Meyer to return path folders an an array
+;
+;ACTION        Returns the path-only portion of a given file
+;
+;VERSION       1.3
+;
+;KIXTART       4.12
+;
+;SYNTAX        GETFILEPATH(FILENAME [,SEGMENTS])
+;
+;PARAMETERS    FILENAME
+;              Required string containing the filespec (path+filename) you wish to extract the path from
+;
+;              SEGMENTS
+;              Optional boolean indicating whether to return the path folders as an array
+;
+;RETURNS       filepath, otherwise an empty string
+;
+;REMARKS       Base on a scriptLogic function pasted at
+;              http://www.scriptlogic.com/kixtart/FunctionLibrary_ViewFunction.aspx?ID=GetFilePath
+;
+;DEPENDENCIES  none
+;
+;EXAMPLE       $filepath = GETFILEPATH('c:\temp\myfile.txt')
+;              $filepath = GETFILEPATH('c:\temp\myfile.txt',1)
+;
+;KIXTART BBS   http://www.kixtart.org/cgi-bin/ultimatebb.cgi?ubb=get_topic&f=12&t=000091
+;
+;---------------------------------------------------------------------------------------------
+function GetFilePath($filespec, optional $seg)
+;begin
+   if instr($filespec,'\')
+      $getfilepath=split($filespec,'\')
+      redim preserve $getfilepath[ubound($getfilepath)-1]
+      if not val($seg)
+         $getfilepath=join($getfilepath,'\')
+      endif
+   else
+      $getfilepath=""
+  endif
+endfunction
+
+;---------------------------------------------------------------------------------------------
+; compress($file,$targetfile,optional $mode)
+;---------------------------------------------------------------------------------------------
+;Function:
+;  Compress()
+;
+;Author:
+;  Lonkero
+;
+;Version:
+;  1.0 (21-08-2003)
+;
+;Version hisotry:
+;  1.0 (21-08-2003) first published version
+;
+;Action:
+;  Compresses and uncompresses scriptfiles
+;
+;Syntax:
+;  Compress(SOURCE,TARGET,MODE)
+;
+;Parameters:
+;  SOURCE   - the file to read from
+;  TARGET   - the file to save results to
+;  MODE  - if 1 -> compress, if 0 or blank -> decompress
+;
+;Returns:
+;  nothing. check @error for possible problems
+;
+;Dependencies:
+;  none
+;
+;Remarks:
+;  should work on all ascii text-files but optimized for kixtart scripts.
+;  left out the on the fly inline compress/decompress to get this fast out.
+;  so, be waiting for that.
+;
+;Example:   
+;  "compressing kixtart piXaso painter:" ?
+;  Compress(@scriptdir+"\paint.kix",@scriptdir+"\paint.kix.kxc",1)
+;  @serror
+;  "Running painter from compressed:"
+;  Compress(@scriptdir+"\paint.kix.kxc","%temp%\paint.kix.tmp")
+;  call "%temp%\paint.kix.tmp"
+;
+;Source:
+;---------------------------------------------------------------------------------------------
+function compress($file,$targetfile,optional $mode)
+ dim $,$f,$raw,$pal[0],$_,$s,$mo,$e,$c,$a,$o1,$o2,$i,$lf,$b
+ $lf=chr(10) $b=chr(1)
+ $f=freefilehandle
+ $=open($f,$file)
+ if @error exit @error endif
+ do $raw=$raw+$lf+readline($f) until @error
+ $=close($f)
+ $raw=split($raw,$lf)
+  $f=freefilehandle
+  $=open($f,$targetfile,5)
+  if @error exit @error endif
+ if $mode
+  $mo=", $$ .*+-/<>()=&@@?|[]'"+'";'
+  $raw[0]="KXc"
+  for $a=1 to ubound($raw)
+   $=""
+   $i=$raw[$a] $_=len($i) $!=0
+   do $!=$!+1
+    $c=substr($i,$!,1)
+    select
+     case $c=""
+     case $c="'" $o1=iif($o1 or $o2,0,1) $=$+$c
+     case $c='"' $o2=iif($o2 or $o1,0,1) $=$+$c
+     case $c=";" if $o1 or $o2 $=$+$c else $!=$_ endif
+     case instr($mo,$c) $=$+$c
+     case 1
+      $s="" do $s=$s+$c $!=$!+1 $c=substr($i,$!,1) until instr($mo,$c) or $!>$_ $!=$!-1
+      $e=ascan($pal,$s)
+      if -1=$e
+       $e=ubound($pal)+1
+       redim preserve $pal[$e]
+       $pal[$e]=$s
+      endif
+      $=$+$e
+    endselect
+   until $!=>$_
+   $raw[$a]=$
+  next
+  $=writeline($f,join($raw)+$lf+join($pal))
+ else
+  if 3<>ubound($raw) exit 13 endif
+  $pal=split($raw[2]) $raw=substr($raw[1],4)
+  $mo="0123456789"
+  for $=0 to len($raw)
+   $!=substr($raw,$,1)
+   if instr($mo,$!)
+    $s="" do $s=$s+$! $=$+1 $!=substr($raw,$,1) until not instr($mo,$!) or @error
+    $_=$_+$pal[$s]
+    $=$-1
+   else
+    $_=$_+$!
+   endif
+  next
+  $=writeline($f,$_)
+ endif
+  $=close($f)
+endfunction
+
+;--------------------------------------------------------------------------------
+; DeleteFF($strPath, $strMethod, Optional $blnForce)
+;--------------------------------------------------------------------------------
+;
+;DeleteFF() - Deleting Folders and Files using FSO returns Errorcode 
+;--------------------------------------------------------------------------------
+;
+;
+;     Function                   : DeleteFF($strPath, $strMethod, Optional $blnForce)
+;
+;     Description                : UDF for Cleaning Up Folders & Files
+;
+;     Script Language            : KiXtart
+;     Version                    : 4.02 or higher
+;
+;     Script Dependecy           : Microsoft Windows Scripting Host 5.6
+;                                  (see http://msdn.microsoft.com/scripting for download)
+;
+;     Parameters                 : $strPath = full path name to folder or file.
+;                                  $strMethod = File to delete file.
+;                                               Folder to delete folder
+;                                               Content to delete folder content.
+;                                  $blnForce = optional, forces to delete, if read-only, hidden or system.
+;
+;     Returns                    : 0 if succesful
+;
+;     Examples                   : DeleteFF("fullpathname\filename", "File", "True")
+;                                  DeleteFF("fullpathname\foldername", "Folder", "True")
+;                                  DeleteFF("fullpathname", "Content", "False")
+;
+;     Written by                 : Ryan Groeneveld
+;     Date                       : 13-07-2002
+;
+;--------------------------------------------------------------------------------
+Function DeleteFF($strPath, $strMethod, Optional $blnForce)
+    $strFSO                                        = "Scripting.FileSystemObject"
+    If KeyExist("HKCR\" + $strFSO) = 0
+        $Tmp = MessageBox("Object " + $strFSO + " is not installed !", "Error", 16)
+        Return
+    Else
+        $objFSO                                    = CreateObject($strFSO)
+        If @Error <> 0
+            $Tmp = MessageBox("Object " + $strFSO + " can not be created !", "Error", 16)
+            Return
+        EndIf
+    EndIf
+    If Len($strPath) > 0
+    And Exist($strPath) = 1
+        ? "Deleting " + $strMethod + " " + $strPath
+        Select
+            Case $strMethod = "File"
+                $Tmp                               = $objFSO.DeleteFile($strPath, $blnForce)
+                $DeleteFF                          = @Error
+            Case $strMethod = "Folder"
+                $Tmp                               = $objFSO.DeleteFolder($strPath, $blnForce)
+                $DeleteFF                          = @Error
+            Case $strMethod = "Content"
+                $strContent                        = Dir($strPath)
+                While Len($strContent) > 0
+                And @Error = 0
+                    If $strContent <> "."
+                    And $strContent <> ".."
+                        If GetFileAttr($strPath + "\" + $strContent) & 16
+                            $Tmp                   = $objFSO.DeleteFolder($strPath + "\" + $strContent, $blnForce)
+                        Else
+                            $Tmp                   = $objFSO.DeleteFile($strPath + "\" + $strContent, $blnForce)
+                        Endif
+                        $DeleteFF                  = @Error
+                    Endif
+                    $strContent                    = Dir()
+                Loop
+            Case 1
+                Return
+        EndSelect
+    Else
+        ? $strMethod + " " + $strPath + " doesn't exist."
+    Endif
+EndFunction
+
+;--------------------------------------------------------------------------------
+; DriveEnum(optional $filter)
+;--------------------------------------------------------------------------------
+;Function DriveEnum()
+;
+;Author Radimus
+;
+;Version 1 (06.20.2002)
+;
+;Action Returns a list of all connected drive letters (space seperated). 
+;
+;Syntax DriveEnum(optional $filter)
+;
+;Parameters
+; $filter- (to return specific types of drives. any combination of the numbers below)
+; 0/"" - return all drives
+; 1 - return removable drives
+; 2 - return fixed drives
+; 3 - return network drives
+; 4 - return CD rom drives
+; 5 - return RAM drives
+;
+;
+;Remarks
+;
+;
+;Returns
+; -space seperated list of drive letters use split() to seperate
+;
+;
+;Dependencies
+; WSH - kix 4.02+
+;
+;Examples
+; $netdrives=DriveEnum(3)
+; $localdrives=DriveEnum(124)
+; $all=DriveEnum("")
+;
+;--------------------------------------------------------------------------------
+function DriveEnum(optional $filter)
+   dim $fso, $Drive
+;begin
+   $fso = CreateObject("Scripting.FileSystemObject")
+   if $fso
+      for each $Drive in $fso.Drives
+         if instr($filter,$Drive.DriveType) or $filter=""
+            $DriveEnum = $DriveEnum+$Drive.DriveLetter+" "
+         endif
+      next
+      $DriveEnum=left($DriveEnum,len($DriveEnum)-1)
+      $fso=""
+   endif
+endfunction
+
+;--------------------------------------------------------------------------------
+; FileOwner($file)
+;--------------------------------------------------------------------------------
+;Function:
+;  FileOwner()
+;
+;Author:
+;  Lonkero
+;
+;Version:
+;  1.1
+;
+;Version History:
+;  1.1   (29.4.2003) - now supports also XP, NT and WIN9x
+;  1.0.1 (29.4.2003) - syntax error fix
+;  1.0   (28.4.2003) - initial release
+;
+;Action:
+;  Retrieves File's Owner Info
+;
+;Syntax:
+;  FileOwner(FILE)
+;
+;Parameters:
+;  FILE  Required. Full path to file.
+;
+;Remarks:
+;  Don't try to use on FAT-filesystem       
+;
+;Returns:
+;  File's Owners
+;  if no return value, check @error for possible errors (listed below)
+;
+;Errorcodes:
+;  2  file does not exist
+;  120   shell.dll version not sufficient
+;
+;Dependencies:
+;  shell32.dll version 4.71
+;
+;Examples:
+;  "file c:\winnt\logon.log owner is:"
+;  fileowner("c:\winnt\niemjo.log")
+;
+;--------------------------------------------------------------------------------
+function FileOwner($file)
+   dim $,$f
+;begin
+   if not exist($file) exit 2 endif
+   $f=split($file,"\")
+   $file=$f[ubound($f)]
+   $f[ubound($f)]=""
+   $f=join($f,"\")
+   $=createobject("shell.application")
+   if 9<>vartype($) exit 120 endif
+   $FileOwner=$.namespace($f).getdetailsof($.namespace($f).parsename($file),8)
+endfunction
+
+;--------------------------------------------------------------------------------
+; fileprops($folder)
+;--------------------------------------------------------------------------------
+; Function fileprops($folder)
+;
+; Author Kent Dyer (dyerkb@myrealbox.com)
+;
+; Version 1.2 (30.06.2002)
+;
+; Action Gets file properties.
+;
+; Syntax fileprops($folder)
+;
+; Parameters
+; $folder - Required folder to get files properties from
+;
+; Remarks
+; -- Ref. - http://kixtart.org/board/ultimatebb.php?ubb=get_topic;f=1;t=005123
+; -- Thanks Rad for help w/file attributes
+;
+; Returns
+; Name
+; File Type
+; Last Modfied
+; Last Accessed
+;
+; -- Output example
+; -- Name is: c:\!kix\wzremove.bat
+; -- File Type: c:\!kix\MS-DOS Batch File
+; -- Last Modfied: c:\!kix\7/24/2001 9:07:41 AM
+; -- Last Accessed: c:\!kix\6/17/2002 12:20:17 PM
+;
+; Dependencies
+; kixtart 4.x
+;
+; Examples
+; BREAK ON
+; CLS
+; fileprops("c:\!kix")
+;
+;--------------------------------------------------------------------------------
+FUNCTION fileprops($folder)
+$folderspec = $folder
+$fs = CreateObject("Scripting.FileSystemObject")
+;;$f = $fs.GetFolder(server.mappath($folderspec))
+$f = $fs.getfolder($folderspec)
+$fc = $f.files
+?"File List"
+FOR EACH $list IN $fc
+?"Name is: " + $list.name
+?"File Type: " + $list.type
+?"Last Modfied: " + $list.datelastmodified
+?"Last Accessed: " + $list.datelastaccessed
+$result = GetFileAttr( $list.name ) $attr=""
+IF $result & 4096 $attr=$attr+"Offline " 
+ENDIF
+IF $result & 2048 $attr=$attr+"compressed " 
+ENDIF
+IF $result & 1024 $attr=$attr+"Reparse point " 
+ENDIF
+IF $result & 512 $attr=$attr+"Sparse file " 
+ENDIF
+IF $result & 256 $attr=$attr+"Temporary " 
+ENDIF
+IF $result & 128 $attr=$attr+"Normal " 
+ENDIF
+IF $result & 64 $attr=$attr+"Encrypted " 
+ENDIF
+IF $result & 32 $attr=$attr+"Archive " 
+ENDIF
+IF $result & 16 $attr=$attr+"Directory " 
+ENDIF
+IF $result & 4 $attr=$attr+"System " 
+ENDIF
+IF $result & 2 $attr=$attr+"Hidden " 
+ENDIF
+IF $result & 1 $attr=$attr+"Read only" 
+ENDIF
+?"Attributes: $result " + $attr
+?
+NEXT
+
+$fs = ""
+$f = ""
+$ = ""
+ENDFUNCTION
+
+;--------------------------------------------------------------------------------
+; fnGetFolderProp($sFldr,$sProp)
+;--------------------------------------------------------------------------------
+;
+;Function:
+; fnGetFolderProp()
+;
+;Authors:
+; Christopher Shilt (christopher.shilt@relizon.com)
+;
+;Version:
+; 1.0
+;
+;Version History:
+;
+;
+;Action:
+; Uses the File System Object to retrieve folder properties.
+;
+;Syntax:
+; fnGetFolderProp(FOLDER, PROPERTY)
+;
+;Parameters:
+; FOLDER : Required Parameter. Path to Folder or Drive.
+; PROPERTY : Required Parameter. See Remarks for available properties.
+;
+;Remarks:
+; Attributes : Returns the attributes of folders.
+; DateCreated : Returns the date and time that the specified folder was created. 
+; DateLastAccessed : Returns the date and time that the specified folder was last accessed.  ;
+; DateLastModified : Returns the date and time that the specified folder was last modified.
+; Drive : Returns the drive letter of the drive on which the specified folder resides.
+; Files : Returns a Files collection consisting of all File objects contained in the
+; specified folder, including those with hidden and system file attributes set.
+; IsRootFolder : Returns True if the specified folder is the root folder; False if it is not.
+; Name : Returns the name of a specified folder.
+; ParentFolder : Returns the folder object for the parent of the specified folder.
+; Path : Returns the path for a specified folder, or drive.
+; ShortName : Returns the short name used by programs that require the earlier 8.3 naming
+; convention.
+; ShortPath : Returns the short path used by programs that require the earlier 8.3 naming
+; convention.
+; Size : Returns the size, in bytes, of all files and subfolders contained in the folder.
+; SubFolders : Returns a Folders collection consisting of all folders contained in a specified
+; folder, including those with hidden and system file attributes set.
+; Type : Returns information about the type of a folder.
+;
+;Returns:
+; Property specified.
+; 
+;Dependencies:
+; KiX 4.02 (or higher), File System Object (FSO)
+; 
+;Example:
+;
+; $sFolder = "%USERPROFILE%"
+;
+; fnGetFolderProp($sFolder,Attributes) ?
+; fnGetFolderProp($sFolder,DateCreated) ?
+; fnGetFolderProp($sFolder,DateLastAccessed) ?
+; fnGetFolderProp($sFolder,DateLastModified) ?
+; fnGetFolderProp($sFolder,Drive) ?
+; fnGetFolderProp($sFolder,IsRootFolder) ?
+; fnGetFolderProp($sFolder,Name) ?
+; fnGetFolderProp($sFolder,ParentFolder) ?
+; fnGetFolderProp($sFolder,Path) ?
+; fnGetFolderProp($sFolder,ShortName) ?
+; fnGetFolderProp($sFolder,ShortPath) ?
+; FormatNumber(fnGetFolderProp($sFolder,Size),0) ?
+; fnGetFolderProp($sFolder,Type) ?
+; 
+; $aFiles = fnGetFolderProp($sFolder,Files)
+; "Files:" ?
+; For Each $sFile in $aFiles
+; " " $sFile ?
+; Next
+;
+;--------------------------------------------------------------------------------
+Function fnGetFolderProp($sFldr,$sProp)
+   Dim $objFSO, $objFldr, $nul
+;begin
+   $objFSO = CreateObject("Scripting.FileSystemObject")
+   If Not VarType($objFSO)=9 Exit 1 EndIf
+   $objFldr = $objFSO.GetFolder($sFldr)
+   If Not VarType($objFldr)=9 Exit 3 EndIf
+   $nul=Execute("$$fnGetFolderProp = $$objFldr."+$sProp)
+   If VarType($fnGetFolderProp)=0 Exit 87 EndIf
+EndFunction 
+
+;--------------------------------------------------------------------------------
+; fnGetFileProp($sFile,$sProp)
+;--------------------------------------------------------------------------------
+;
+;Function:
+; fnGetFileProp()
+;
+;Authors:
+; Christopher Shilt (christopher.shilt@relizon.com)
+;
+;Version:
+; 1.0
+;
+;Version History:
+;
+;
+;Action:
+; Uses the File System Object to retrieve file properties.
+;
+;Syntax:
+; fnGetFileProp(FILE, PROPERTY)
+;
+;Parameters:
+; FILE : Required Parameter. Path to File.
+; PROPERTY : Required Parameter. See Remarks for available properties.
+;
+;Remarks:
+; Attributes : Returns the attributes of the file.
+; DateCreated : Returns the date and time that the specified file was created. 
+; DateLastAccessed : Returns the date and time that the specified file was last accessed. < /font>
+; DateLastModified : Returns the date and time that the specified file was last modified. 
+; Drive : Returns the drive letter of the drive on which the specified file resides.
+; Name : Returns the name of a specified file.
+; ParentFolder : Returns the folder object for the parent of the specified folder.
+; Path : Returns the path for a specified file
+; ShortName : Returns the short name used by programs that require the earlier 8.3 naming
+; convention.
+; ShortPath : Returns the short path used by programs that require the earlier 8.3 naming
+; convention.
+; Size : Returns the size, in bytes, of the specified file.
+; Type : Returns information about the type of a folder.
+;
+;Returns:
+; Property specified.
+; 
+;Dependencies:
+; KiX 4.02 (or higher), File System Object (FSO)
+; 
+;Example:
+;
+; $sFile = "E:\KIX32.exe"
+; 
+; fnGetFileProp($sFile,Attributes) ?
+; fnGetFileProp($sFile,DateCreated) ?
+; fnGetFileProp($sFile,DateLastAccessed) ?
+; fnGetFileProp($sFile,DateLastModified) ?
+; fnGetFileProp($sFile,Drive) ?
+; fnGetFileProp($sFile,Name) ?
+; fnGetFileProp($sFile,ParentFolder) ?
+; fnGetFileProp($sFile,Path) ?
+; fnGetFileProp($sFile,ShortName) ?
+; fnGetFileProp($sFile,ShortPath) ?
+; FormatNumber(fnGetFileProp($sFile,Size),0) ?
+; fnGetFileProp($sFile,Type) ?
+; 
+;--------------------------------------------------------------------------------
+Function fnGetFileProp($sFile,$sProp)
+   Dim $objFSO, $objFile, $nul
+;begin
+   $objFSO = CreateObject("Scripting.FileSystemObject")
+   If Not VarType($objFSO)=9 Exit 1 EndIf
+   $objFile = $objFSO.GetFile($sFile)
+   If Not VarType($objFile)=9 Exit 2 EndIf
+   $nul=Execute("$$fnGetFileProp = $$objFile."+$sProp)
+   If VarType($fnGetFileProp)=0 Exit 87 EndIf
+EndFunction 
+
+;--------------------------------------------------------------------------------
+;--------------------------------------------------------------------------------
+;
+;Function:
+; fnMapped()
+;
+;Author:
+; Christopher Shilt (christopher.shilt@relizon.com)
+;
+;Version:
+; 1.0
+;
+;Version History:
+;
+;
+;Action:
+; Uses the File System Object to determine is a share is mapped to a drive letter.
+;
+;Syntax:
+; fnMapped(UNC)
+;
+;Parameters:
+; UNC : Required Parameter. UNC path to test.
+;
+;Remarks:
+;
+;Returns:
+; Drive letter of drive mapped to the specified UNC.
+; Nothing if the UNC is not mapped.
+;
+; @ERROR = 1 if FSO is not installed.
+; 
+;Dependencies:
+; KiX 4.02 (or higher), File System Object (FSO)
+; 
+;Example:
+;
+; $sShare = "\\server\share"
+;
+; fnMapped($sShare) ?
+; 
+; If Not fnMapped($sShare)
+; "Do something here..." ?
+; EndIf
+;
+;--------------------------------------------------------------------------------
+Function fnMapped($sUNC)
+Dim $oDrives,$oDrive
+$oDrives = CreateObject("Scripting.FileSystemObject").Drives
+If Not VarType($oDrives) & 9 Exit 1 EndIf
+For Each $oDrive in $oDrives
+If $oDrive.DriveType = 3 AND $sUNC = $oDrive.ShareName
+$fnMapped = $oDrive.DriveLetter + ":"
+EndIf
+Next
+EndFunction 
+
+;--------------------------------------------------------------------------------
+; ($path1, optional $path2)
+;--------------------------------------------------------------------------------
+;FUNCTION      FullFile
+;
+;AUTHOR        Jens Meyer (sealeopard@usa.net)
+;
+;ACTION        Creates a fully qualified path
+;
+;VERSION       1.1
+;
+;KIXTART       4.12
+;
+;SYNTAX        FULLFILE(PATH1 [, PATH2])
+;
+;PARAMETERS    PATH1
+;              Required string/array containing pathname(s)
+;
+;              PATH2
+;              Required string containing the rightmost pathname or filename
+;
+;RETURNS       The fully qualified path or filename in lowercase
+;
+;REMARKS       none
+;
+;DEPENDENCIES  none
+;
+;EXAMPLE       $file = fullfile('c:\windows','system32\kixtart.exe')
+;              $file = 'c:\windows\system32\kixtart.exe'
+;              $path[0]='c:\'
+;              $path[1]='temp'
+;              $file='test.txt'
+;              $file=fullfile($path,$file)
+;
+;KIXTART BBS   http://www.kixtart.org/cgi-bin/ultimatebb.cgi?ubb=get_topic&f=12&t=000028
+;
+;--------------------------------------------------------------------------------
+function fullfile($path1, optional $path2)
+  Dim $a, $path3
+
+  $a=ubound($path1)
+  if $a>0
+    $path3=$path1[$a]
+    redim preserve $path1[$a-1]
+    $path1=fullfile($path1,$path3)
+  endif
+
+  if ubound($path1)=0
+    $path1=$path1[0]
+  endif
+  if right($path1,1)='\'
+    $path1=left($path1,len($path1)-1)
+  endif
+
+  if $path2
+    if left($path2,1)='\'
+      $path2=right($path2,len($path2)-1)
+    endif
+    $fullfile=lcase($path1+'\'+$path2)
+  else
+    $fullfile=$path1
+  endif
+
+endfunction
+
+;--------------------------------------------------------------------------------
+; ($sSrc, $sDest, OPTIONAL $lFlags, OPTIONAL $bMove)
+;--------------------------------------------------------------------------------
+; GUICopy() - Use the Animated 'Copying Files' Progress Dialog 
+;
+;Function GUICopy()
+;
+;Author Christopher Shilt (christopher.shilt@relizon.com)
+;
+;Version 2.0
+;
+;Version History
+; 03/20/2003 Version 2.1 Converts COM error codes to Win32 error code. Fixed version
+; check.
+;
+; 03/04/2003 Version 2.0 Complete rework of GUICopy() function.
+;
+; 07/19/2002 Version 1.0
+;
+;Action Uses the Shell Object to copy or move files/folders. Displays the animated
+; 'Copying Files' progress dialog as files/folders are being copied.
+;
+;Syntax GUICopy("Source", "Destination", optional FLAGS, optional MOVE)
+;
+;Parameters 
+; SOURCE : REQUIRED. Path to source file or folder.
+;
+; DESTINATION : REQUIRED. Path to the destination folder.
+;
+; FLAGS : OPTIONAL. Specifies options for the operation. See remarks for
+; options.
+;
+; COMMAND : OPTIONAL. Copy = 0 (or undefined); Move = 1
+;
+;Remarks
+;
+; 4 Do not display a progress dialog box.
+; 8 Give the file being operated on a new name in a move, copy, or rename
+; operation if a file with the target name already exists.
+; 16 Respond with "Yes to All" for any dialog box that is displayed.
+; 64 Preserve undo information, if possible.
+; 128 Perform the operation on files only if a wildcard file name (*.*) is
+; specified.
+; 256 Display a progress dialog box but do not show the file names.
+; 512 Do not confirm the creation of a new directory if the operation requires
+; one to be created.
+; 1024 Do not display a user interface if an error occurs.
+; 2048 Version 4.71. Do not copy the security attributes of the file.
+; 4096 Only operate in the local directory. Don't operate recursively into
+; subdirectories. 
+; 8192 Version 5.0. Do not copy connected files as a group. Only copy the
+; specified files.
+;
+;Returns The exitcode of the command in the @ERROR macro.
+; @ERROR = 0 The operation completed successfully.
+; @ERROR = 2 The system cannot find the file specified. (Refers to Source file.)
+; @ERROR = 3 The system cannot find the path specified. (Bad destination path.)
+; @ERROR = 9 The storage control block address is invalid. (Most likely cancelled copy.)
+; @ERROR = 10 The environment is incorrect. (Incorrect Shell32.dll version.)
+; @ERROR = 87 The parameter is incorrect. (Use 0 or 1 to specify Copy or Move.)
+; 
+;Dependencies KiX 4.02 (or higher)
+; Shell32.dll version 4.71 or later. (Included with: Windows 2000, Windows NT 4.0
+; with Internet Explorer 4.0, Windows 98, Windows 95 with Internet Explorer
+; 4.0.)
+; 
+;Example:
+; ; Copy all KiX files in 'C:\' to 'E:\':
+; GUICopy("C:\*.kix", "E:\")
+; @ERROR " : " @SERROR ?
+;
+; ; Copy all KiX files in 'C:\' to 'E:\', but do not overwrite. Instead, make a
+; ; new copy of the files:
+; GUICopy("C:\*.kix", "E:\", 8)
+; @ERROR " : " @SERROR ?
+;
+; ; Copy a folder in 'C:\KiXScripts' to 'E:\'
+; GUICopy("C:\KiXScripts", "E:\")
+; @ERROR " : " @SERROR ?
+;
+; ; Move the folder in 'C:\KiXScripts' to 'E:\'
+; GUICopy("C:\KiXScripts", "E:\",0,1)
+; @ERROR " : " @SERROR ?
+;Source
+;--------------------------------------------------------------------------------
+Function GUICopy($sSrc, $sDest, OPTIONAL $lFlags, OPTIONAL $bMove)
+   Dim $sVer,$objShell,$objFldr
+;begin
+   If Not Exist($sSrc) Exit 2 Endif
+   If Not Exist($sDest) Exit 3 Endif
+   If @INWIN=1
+      $sVer=GetFileVersion(%WINDIR%+"\System32\Shell32.dll","FileVersion")
+   Else
+      $sVer=GetFileVersion(%WINDIR%+"\System\Shell32.dll","FileVersion")
+   Endif
+   If $sVer<"4.71" Exit 10 Endif
+   $objShell=CreateObject("Shell.Application")
+   $objFldr=$objShell.NameSpace($sDest)
+   If @ERROR<0 Exit VAL("&"+Right(DecToHex(@ERROR),4)) EndIf
+   Select
+      Case $bMove=1 $objFldr.MoveHere($sSrc,$lFlags)
+      Case $bMove=0 $objFldr.CopyHere($sSrc,$lFlags)
+      Case 1 Exit 87
+   EndSelect
+   If @ERROR<0 Exit VAL("&"+Right(DecToHex(@ERROR),4)) EndIf
+   Exit @ERROR
+EndFunction 
+
+;--------------------------------------------------------------------------------
+; GUIDialog($_title, optional $_root, optional $_mode)
+;--------------------------------------------------------------------------------
+; GUIDialog() - GUI dialog for selecting folder, file, printer or computer 
+;
+;FUNCTION   GUIDialog()
+;
+;AUTHOR   Lonkero
+;
+;ACTION  GUI for selecting folder/file/computer/printer...
+;
+;SYNTAX   GUIDialog(TITLE,[ROOT][,MODE])
+;
+;PARAMETERS
+;   TITLE
+;       - Title to show in dialog
+;
+;   ROOT (Optional)
+;       -  Specifies the root of the Browse dialog box.
+;          The user cannot browse higher in the architecture than this folder.
+;          If this value is not specified, the root of the Browse dialog box is the desktop.
+;
+;   MODE (Optional)
+;        - Changes the mode to show in dialog
+;          2 = Do not include network folders below the domain level in the dialog box's tree view control.
+;         16 = Include an edit control in the browse dialog box that allows the user to type the name of an item.
+;       4096 = Only return computers. If the user selects anything other than a computer, the OK button is grayed.
+;       8192 = Only return printers. If the user selects anything other than a printer, the OK button is grayed.
+;      16384 = The browse dialog box will display files as well as folders.
+;
+;RETURNS
+;      the full path to folder, or error if user pressed cancel.
+;
+;DEPENDENCIES   Minimum operating systems: Windows 2000, Windows ME
+;
+;EXAMPLE
+;      GUIdialog("kix ass")
+;      if @error
+;         "user pressed cancel"
+;      endif
+;
+;--------------------------------------------------------------------------------
+function GUIDialog($_title, optional $_root, optional $_mode)
+   dim $LShell
+;begin
+   $GUIDialog = ""
+   $LShell = createobject("shell.application")
+   $ObjFolder = $LShell.BrowseForFolder(0, $_title, 0+$_mode, $_root)
+   $LPath = $ObjFolder.Self.Path
+   $LName = $ObjFolder.Self.Name
+   $GUIDialog = $LPath+" "+$LName
+   ;$GUIDialog = $ObjFolder.Title
+   if not len($GUIDialog) exit 1 endif
+endfunction
+
+;--------------------------------------------------------------------------------
+; InPath(Optional $Exe, Optional $Concat)
+;--------------------------------------------------------------------------------
+;
+;ACTION Checks if the given executable is in the path
+;
+;AUTHOR SchulieBug jan.schulenburg@tui.nl
+;
+;VERSION 1.0
+;
+;KIXTART Minimum required Kixtart version 4.02
+;
+;SYNTAX InPath($File,$Concat)
+;
+;PARAMETERS $File
+; Name of the file to search for in the path
+; $ConCat (anything goes)
+; Value indicating to return found path + $file if found
+;
+;RETURNS The part of %Path% the file is in or path+file. @Error=0 if found, 1 if not&n bsp;found.
+;
+;DEPENDENCIES KiXtart 4.02 +
+;
+;EXAMPLE #1
+; If InPath('postie.exe')<>''
+; ; postie actions here..
+; Else
+; ; Action if not in path..
+; EndIf
+;
+; #2
+; $=InPath('postie.exe')
+; If Not @Error
+; ; postie actions here..
+; Else
+; ? @SERROR
+; EndIf
+;
+;KIXTART BBS http://www.kixtart.org/cgi-bin/ultimatebb.cgi?ubb=get_topic&f=12&t=000390
+;
+;--------------------------------------------------------------------------------
+Function InPath(Optional $Exe, Optional $Concat)
+Dim $Path,$i,$Error
+$InPath=''
+$Error=3 ; Path not found
+
+If ''+$Exe<>''
+$Path=Split('%Path%',';')
+For $i=0 To UBound($Path)
+If $Path[$i]<>'' And Exist($Path[$i]+'\'+$Exe)=1
+If Not $ConCat
+$InPath=$Path[$i]
+Else
+$InPath=$Path[$i]+'\'+$Exe
+EndIf
+
+$Error=0
+$i=UBound($Path)
+EndIf
+Next
+Else
+$Error=1
+EndIf
+
+Exit $Error
+EndFunction 
+
+
+;--------------------------------------------------------------------------------
+; insertline($a, $b, optional $c, optional $d)
+;--------------------------------------------------------------------------------
+; InsertLine() - insert, replace, or delete any line in a text file 
+;  Function:     InsertLine()
+;
+;  Author:       Gaven Henderson, Gaven@GavDogg.net
+;  
+;  Action:       Insertline can be used to insert, replace, or delete any existing line in a text file.
+; 
+;  Remarks:      InsertLine does not automatically append a <Carriage Return>, so if you want to write a
+;                <Carriage Return>, you should add it to the string (as in : $LineToWrite + @CRLF).
+;
+;  Syntax:       insertline(["File"], [Position], optional ["LineToWrite"], optional [Mode])
+;
+;  Version:      1.0
+;
+;  Post Date:    June 26, 2003
+;
+;  Revise Date:  June 26, 2003
+;
+;  Parameters:   File
+;                   File to act on.
+;
+;                Position
+;                   Line number to insert on, 0 = top.
+;
+;                LineToWrite (optional)
+;                   String to write in file specified.  If LineToWrite is blank, Mode 1 is assumed.
+;
+;                Mode (optional)
+;                   0 - Default, insert line before existing line
+;                   1 - Replace existing line
+;  
+;  Returns:      -3 - Invalid line number specified
+;                -2 - No file handles available
+;                -1 - Invalid file name specified
+;                0  - Success
+;                >0 - System error
+;
+;  KiXtart Ver:  Designed on 4.20 but should work on just about any version.
+;
+;  Example:      $rc = insertline("file.txt",0)                   ;  This would delete the first line in file.txt
+;                $rc = insertline("file.txt",3,"was 4"+@Crlf,1)   ;  This would replace the fourth line with "was 4"
+;                $rc = insertline("file.txt",8,"Information: ")   ;  This would add "Information: " before (not above) line 8
+;
+;--------------------------------------------------------------------------------
+Function insertline($a, $b, optional $c, optional $d)
+   Dim $e,$f,$h,$x,$y
+;begin
+   If $b<0 Exit -3 EndIf
+   If $c="" $d=1 EndIf
+   $f="%temp%\~kixil00.tmp" ; temporary file to use
+   Del $f
+   If $d<>1 $d=0 EndIf
+   $e=FreeFileHandle
+   $insertline=-2
+   If $e=0 Exit -2 EndIf
+   $insertline=Open($e,$a)
+   If $insertline<>0 Exit @Error EndIf
+   $h=FreeFileHandle
+   If $h=0
+      $insertline=-2
+      $x=Close($e)
+      Exit -2 
+   EndIf
+   $insertline=Open($h,$f,5)
+   If $insertline<>0
+      $x=Close($e)
+      Exit @Error
+   EndIf
+   If $b<>0
+      For $x=0 To $b-1
+         $y=ReadLine($e)
+         If @Error<>0
+            $x=Close($e)
+            $x=Close($h)
+            Del $f
+            $insertline=-3
+            Exit -3
+         Else
+            $insertline=WriteLine($h,$y+@Crlf)
+         EndIf
+      Next
+   EndIf
+   $insertline=WriteLine($h,$c)
+   $y=ReadLine($e)
+   If @Error<>0
+      $x=Close($e)
+      $x=Close($h)
+      Del $f
+      $insertline=-3
+      Exit -3
+   EndIf
+   If $d=0
+      $x=WriteLine($h,$y+@Crlf)
+   EndIf
+   $y=ReadLine($e)
+   While @Error=0
+      $insertline=Writeline($h,$y+@Crlf)
+      $y=ReadLine($e)
+   Loop
+   $x=Close($e)
+   $x=Close($h)
+   Copy $f $a
+   Del $f
+   $insertline=0
+   Exit 0
+EndFunction
+
+;--------------------------------------------------------------------------------
+; IsStringInFile($filename,$string)
+;--------------------------------------------------------------------------------
+; IsStringInFile() - Checks whether a string is present in a file 
+;FUNCTION      IsStringInFile
+;
+;AUTHOR        Jens Meyer (sealeopard@usa.net)
+;
+;ACTION        Checks whether a string is present in a file
+;
+;VERSION       1.2
+;
+;KIXTART       4.12
+;
+;SYNTAX        ISSTRINGINFILE(STRING,FILENAME)
+;
+;PARAMETERS    FILENAME
+;              File to search for the presence of STRING
+;
+;              STRING
+;              Required string to search for
+;
+;RETURNS       1 if the file contains the search string, otherwise 0
+;
+;REMARKS       none
+;
+;DEPENDENCIES  none
+;
+;EXAMPLE       $rc=IsStringInFile('teststring','c:\temp\testfile.txt')
+;
+;KIXTART BBS   http://www.kixtart.org/cgi-bin/ultimatebb.cgi?ubb=get_topic&f=12&t=000141
+;
+;--------------------------------------------------------------------------------
+function IsStringInFile($filename,$string)
+
+  $isstringinfile=0
+  if $string=''
+    exit 87
+  endif
+  if not exist($filename)
+    exit 2
+  endif
+
+  shell '%COMSPEC% /e:1024 /c find /c /i "'+$string+'" "'+$filename+'" > nul'
+
+  if @ERROR=0
+    $IsStringInFile=1
+  endif
+  exit 0
+endfunction
+
+;--------------------------------------------------------------------------------
+; MakeCab($Cab,$Files) 
+;--------------------------------------------------------------------------------
+; MakeCab() - Create windows cabinet file package with specified files included 
+;Function:  ;  MakeCab();  ;Authors:  ;   Lonkero  ;  ;Version:  ;   1.1;  ;Version History:  ; 1.1   19.5.2003;     added some errorcodes and fixed many buggies;;  1.0   19.5.2003;     initial code; ;Action:  ;  Makes Cabinet file;  ;Syntax:  ; MakeCab(CAB,FILES);  ;Parameters:  ;   CAB  ;      REQUIRED STRING;     Cabinet file to create; FILES;      REQUIRED STRING OR ARRAY OF STRINGS;      Full paths to files to include;;Remarks:  ;  Tested only on w2k and XP (thanks shawn); YEAH, Nice KIXpackager finally!;  ;Returns:  ;  if one file added, returns it's adding error.;  if multiple files added (array) returns same sized array with ;   errorcode for each file in their respective element.;;   if fatal error (can't even create the cab), sets errorcode but returns nothing;;Errorcodes:; 0  Success; 2  File does not exist; 183   CAB file already exist; 120   Failed to create makecab-object; 156   Unknown error while adding file to cabinet;;Dependencies:  ;   None that I know of;  ;Examples:;   1,;   $return=MakeCab("c:\myCabFile.cab","C:\boot.ini"); if @error;   "error Occured: @error";  else;  if not $return;    "cab created successfully";  else;     "error adding file boot.ini - " $return;    endf;   endif;;  2,;   $my_files="c:\winnt\uptime.exe","c:\winnt\winhelp.exe";  $returns=MakeCab("c:\my_multifile.cab",$my_files); if @error;   "cab creation failed"; else;  "these were the errors that occured during adding files:";  for $counter=0 to ubound($my_files);    ? $my_files[$counter] " - " $returns[$counter];   next;   endif;  
+;--------------------------------------------------------------------------------
+function MakeCab($Cab,$Files) 
+   dim $[0],$! 
+   if exist($Cab) 
+      exit 183 
+   endif 
+   if 8=vartype($Files) 
+      $[0]=$Files 
+      $Files=$ 
+   endif 
+   $maker=CreateObject("MakeCab.MakeCab.1") 
+   if @error exit 120 
+   endif 
+   $MakeCab=$Files 
+   if instr(@producttype,"Windows XP")  
+      $maker.CreateCab($Cab,0,0, not 1) 
+   else  
+      $maker.CreateCab($Cab,0,0) 
+   endif 
+   for $=0 to ubound($Files)  
+      if not exist($Files[$])   
+         $MakeCab[$]=2  
+      else   
+         $!=split($Files[$],"\")   
+         $maker.AddFile($Files[$],$![ubound($!)])   
+         if @error    
+            $MakeCab[$]=156   
+         else    
+            $MakeCab[$]=0   
+         endif  
+      endif 
+   next 
+   $maker.closecab 
+   if not ubound($MakeCab) 
+      $=$MakeCab 
+      $MakeCab=$[0] 
+   endif
+endfunction
+
+;--------------------------------------------------------------------------------
+; PathSplit($Path)
+;--------------------------------------------------------------------------------
+; PathSplit() - returns Server, Share/Drive, Path, File info 
+;
+;This UDF splits an argument of the form 
+;\\server\share\path1\path2\file.ext 
+;or
+;d:\path1\path2\file.ext
+;into a 4-element array.
+;
+;The first element will contain the server name if a UNC path was supplied.
+;
+;Element 2 will contain the Share Name if a UNC path was the source, a Drive Letter if it was specified in a local path, or null if neither was provided.
+;
+;The third element will contain the Path component. One thing to consider: The UDF can't distinguish between 'c:\temp\xyzzy' as a file and 'c:\temp\xyzzy' as a directory. It follows the following rules to decide if the last component is a file or directory:
+;
+;If the specified path ends with '\', the UDF treats the last component as a part of the PATH. 
+;If the last component contains a '.', it is deemed to be a FILE. 
+;If the last component does not contain a '.', it is deemed to be part of the PATH.
+;Element four will contain the filename if it was specified. 
+;
+;Individual directories in the path can easily be obtained with split($ary[2], '\')
+;
+;;
+;;ACTION Returns a 4 element array with Server, Share, Path, and File
+;;
+;;AUTHOR Glenn Barnas / FRIT-EROC; Conrad Wheeler (RADIMUS)
+;;
+;;SYNTAX PathSplit("path")
+;;
+;;PARAMETERS Path - Directory path to create.
+;;
+;;REMARKS Path can be relative (a\b\c) or rooted (\a\b\c), and 
+;; either type can specify either a drive (D:) or 
+;; UNC name (\\server\share)
+;; If splitting a DirectoryPath, the function attempts to
+;; validate the path to determine if the last element is a 
+;; file or directory. If the parameter ends with a "\", it
+;; is assumed to be a directory. If the parameter is ambiguous,
+;; the function will return it as a PATH if it does not contain
+;; a "." and as a FILE if it does.
+;;
+;;RETURNS 4-element array containing info about a file/path:
+;; Element 0 = \\Server name (if specified)
+;; Element 1 = \Share name OR Drive Letter (if specified)
+;; Element 2 = \path\
+;; Element 3 = filename 
+;;
+;;DEPENDENCIES none
+;;
+;;TESTED WITH NT4, W2K, WXP
+;;
+;;EXAMPLES PathSplit("C:\Temp\install\") ; Returns "","C:","\Temp\","install"
+;; PathSplit("\\server\c$\Temp\install\") ; Returns "\\server","C$","\Temp\","install"
+;
+;--------------------------------------------------------------------------------
+Function PathSplit($Path)
+   Dim $Server, $Share, $Dir, $File, $Tag
+;begin
+   $Server='' $Share='' $Dir='' $fFle='' $Tag=0
+
+   ; Determine if we received a FilePath or DirectoryPath
+   ; add a "\" if we have a DirectoryPath
+   If Exist($Path) 
+      If GetFileAttr($Path) & 16
+         If Right($Path,1) <> "\"
+            $Path = $Path + "\"
+         EndIf
+      EndIf
+   EndIf
+
+   $arrDir=Split($Path,'\')
+   $UBound = UBound($arrDir)
+
+   ; Default - last element is FILE unless overridden
+   $File = $arrDir[$UBound]
+
+   Select
+      ; single element, no ".", assume DIRECTORY
+      Case $UBound=0 And Not InStr($Path,'.')
+         $Dir = $Path
+         $File = ""
+
+      ; single element, contains a ":", assume DRIVE
+      Case $UBound = 0 And InStr($arrdir[0],":")
+         $Share = Left($arrDir[0],2)
+         $File = Right($arrDir[0],Len($arrDir[0]) - 2)
+
+      ; single element, contains a ".", assume FILE
+      Case $UBound = 0 And InStr($Path,'.')
+         $File = $Path
+
+      ; multiple elements, first element contains ":", DRIVE
+      Case Instr($arrDir[0],':')
+         $Share = Split($arrDir[0],':')[0] + ':'
+         $Dir = Split($arrDir[0],':')[1] + '\'
+         $File=$arrDir[$UBound]
+         $Tag = 1
+
+      ; multiple elements, first two null, assume \\Server\Share
+      Case $arrDir[0]='' And $arrDir[1]=''
+         $Server = '\\' + $arrDir[2]
+         $Share = '\' + $arrDir[3]
+         $Dir = '\'
+         $File = $arrDir[$ubound]
+         $Tag = 4
+   EndSelect
+
+   For $Loop = $Tag to $UBound - 1 
+      $Dir = $Dir + $arrDir[$loop] + '\'
+   Next
+
+   $PathSplit = $Server, $Share, $Dir, $File
+
+endfunction
+
+
+;--------------------------------------------------------------------------------
+;Pipe() - Submits a shell command and redirects output to an array 
+;--------------------------------------------------------------------------------
+;
+;Action:
+;
+;Submits shell command and redirects output to an internal KiXtart array
+;
+;Syntax: 
+;
+;pipe("command")
+;
+;Parameters:
+;
+;command : A DOS Shell command
+;
+;Returns:
+;
+;An array containing the text output of the shell command.
+;
+;@ERROR is set to the return value of the SHELL command (winnt).
+;
+;Remarks:
+;
+;On WinNT, stderr is redirected to the NUL device (discarded)
+;
+;Function uses File Handle #10 - please change if conflict arises
+;
+;Function creates a temporary file in %TEMP% called PIPE.TMP - deleted after use.
+;
+;Empty (null) lines are skipped (not included) in the output array
+;
+;Piping between processes (in the command string) is supported
+;
+;Do not specify redirection of output in command string
+;
+;Implemented incredible performance enhancement recommended by member AHayes (AJH) [2001-12-11]
+;
+;Dependencies:
+;
+;KiXtart 4.0
+;
+;Example(s):
+;
+;
+;
+;$array = pipe("net users") ; load all users into an array$array = pipe("dir c:\*.ini /s /b") ; load a listing of all ini files into an array$array = pipe("type config.txt") ; load the contents of a text file into an array$ipconfig = pipe('ipconfig /all | find "Server"')for each $line in $ipconfig ? $linenext
+;--------------------------------------------------------------------------------
+function pipe($command) 
+   dim $i,$error,$line 
+   dim $array[255] 
+   dim $redim $redim = ubound($array) 
+   dim $tempfile 
+;begin
+   $tempfile = "%temp%\pipe.tmp" 
+   if exist("$tempfile")  del("$tempfile") endif 
+   if @inwin = 2 ; win9x  shell '%comspec% /c $command >"$tempfile"' 
+   else 
+      ; winnt  shell '%comspec% /c $command >"$tempfile" 2>nul' 
+   endif 
+   $error=@error 
+   if open(10,"$tempfile") = 0  $i=0  
+   $line = readline(10)  while not @error   
+   if $line    $array[$i] = $line    
+   if $i = $redim     $redim=$redim*2     
+   redim preserve $array[$redim]    
+   endif    $i=$i+1   endif   
+   $line = readline(10)  loop  
+   $=close(10)  del "$tempfile"  
+   if $i > 0   redim preserve $array[$i-1]   
+   $pipe=$array  else   
+   $pipe = 0  endif  exit 
+   $error else  $pipe = 0  
+   exit @error endif
+endfunction
+
+;--------------------------------------------------------------------------------
+; ($command)
+;--------------------------------------------------------------------------------
+; Pipe2() - Submit a shell command and redirect output to an array 
+;FUNCTION Pipe2()
+;
+;AUTHOR AJH
+; Based on Pipe() by Shawn with krabourn's SPLIT modification
+; (as I can't find the QPIPE UDF mentioned in the original topic)
+;
+;ACTION Submits a Shell command and pipes output to an array
+;
+;SYNTAX $array = Pipe("command")
+;
+;PARAMETERS A DOS shell command
+;
+;RETURNS An array containing the text output of the shell command.
+; @ERROR is set to the return value of the SHELL command (winnt).
+;
+;REQUIRES Kixtart 4.00 (final) release or above
+;
+;REMARKS 1) This seems faster than Shawn's Pipe() for text output up to about 500 Kb
+; If the text output doubles in size Shawn's Pipe() takes twice as long,
+; where this Pipe() takes 4 times as long!
+;
+; 2) This Pipe() is very particular about the line terminator. It MUST BE @CRLF
+; (Shawn's Pipe() uses READLINE which is more forgiving on terminators).
+; It could of course be modified or passed in as a parameter.
+;
+;EXAMPLES $array = pipe("net users") ; load all users into an array
+; $array = pipe("dir c:\*.ini /s /b") ; load a listing of all ini files into an array
+; $array = pipe("type config.txt") ; load the contents of a text file into an array
+;
+; $ipconfig = pipe('ipconfig /all | find "Server"')
+; for each $line in $ipconfig
+; ? $line
+; next
+;SOURCE
+; 
+;--------------------------------------------------------------------------------
+FUNCTION pipe2($command)
+ DIM $error, $tempfile
+ DIM $FSO, $oFile
+;begin
+ $tempfile = "%temp%\pipe.tmp"
+ IF Exist($tempfile)  DEL $tempfile  ENDIF
+ IF @inwin = 2 ; win9x
+   SHELL '%comspec% /c '+$command+' >"'+$tempfile+'"'
+ ELSE ; winnt
+   SHELL '%comspec% /c '+$command+' >"'+$tempfile+'" 2>nul'
+ ENDIF
+ $error = @Error
+ ;
+ $pipe = ""
+ $FSO = CreateObject("Scripting.FileSystemObject")
+ IF @Error <> 0  EXIT @Error  ENDIF
+ $oFile = $FSO.OpenTextFile($tempfile,1,0)
+ IF @Error = 0
+   $pipe = SPLIT($oFile.ReadAll,@CRLF)
+   $oFile = 0
+   $FSO = 0
+ ENDIF
+ ;
+ DEL $tempfile
+ EXIT $error
+ENDFUNCTION
+
+;--------------------------------------------------------------------------------
+; RemotePath($path,optional $computer)
+;--------------------------------------------------------------------------------
+; RemotePath() - Returns a local path as UNC 
+;FUNCTION   RemotePath
+;
+;ACTION      translate a local path on a remote PC to the UNC for remote admin scripts
+;
+;AUTHOR      Radimus
+;
+;CONTRIBUTORS   Probably everyone, as this is very basic, most admins probably have something similar
+;
+;VERSION   1.0
+;
+;DATE CREATED   Sunday 3/23/2003
+;
+;DATE MODIFIED   Date UDF modified
+;
+;KIXTART    4.x   Join(), Split()
+;
+;SYNTAX    RemotePath($path,optional $computer)
+;
+;PARAMETERS    $Path
+;       Local path
+;
+;       Optional $ComputerName
+;       Target PC name, defaults to local @wksta
+;
+;RETURNS    String of remote path to the file/dir passed
+;
+;REMARKS    Basically for admins scripts where the c$ share is available on target PC
+;
+;DEPENDENCIES    none
+;
+;EXAMPLE    ? remotepath('C:\Documents and Settings\conrad\Application Data\Microsoft','radimus')
+;      ? remotepath('C:\Documents and Settings\conrad\Application Data\Microsoft','\\radimus')
+;      ? remotepath('C:\Program Files\Adobe\Acrobat 5.0\Acrobat\Acrobat.exe')
+;
+;KIXTART BBS    http://www.kixtart.org/cgi-bin/ultimatebb.cgi?ubb=get_topic;f=12;t=000000
+;
+;--------------------------------------------------------------------------------
+Function RemotePath($path,optional $computer)
+;begin
+   if not $computer   $computer = @wksta   endif
+   if left($computer,1)='\'
+      $computer=substr($computer,instrrev($computer,'\')+1)
+      endif
+   $RemotePath='\\'+$computer+'\'+join(split($path,':'),chr(36))
+Endfunction
+ 
+;--------------------------------------------------------------------------------
+; rename($0,$1,$2,optional $3)
+;--------------------------------------------------------------------------------
+; Rename() - rename file or folder 
+;Function:
+;  Rename()
+;
+;Author:
+;  Lonkero
+;
+;Version:
+;  1.1
+;
+;Version History:
+;  1.1   (14.5.2003) - added com-error handling and force
+;  1.0   (14.5.2003) - initial release
+;
+;Action:
+;  Renames file or folder
+;
+;Syntax:
+;  Rename(PATH,FROM,TO,FORCE)
+;
+;Parameters:
+;  PATH
+;     Required. String.
+;     Full path to file/folder.
+;  FROM
+;     Required. String.
+;     Initial name (what to rename).
+;  TO
+;     Required. String.
+;     Name to rename to.
+;
+;  FORCE
+;     Optional. any type.
+;     Set to anything to rename read-only or system-files
+;
+;Remarks:
+;  changing file-extension makes OS ask from user.
+;
+;Returns:
+;  nothing or relevant errorcode
+;
+;Errorcodes:
+;  2  file/folder does not exist
+;  80 destination already exists
+;  87 invalid parameter(s)
+;  161   invalid path
+;  196   shell.dll version not sufficient
+;  *  all other errors are com-returned or failures to force.
+;     see @error/@serror for info.
+;
+;Dependencies:
+;  shell32.dll version 4.71
+;
+;Examples:
+;  1.
+;  if rename('c:\','test.txt','test2.txt',1)
+;   "file rename error @error: @serror"
+;  else
+;   "file test.txt renamed to test2.txt"
+;  endif
+;  2.
+;  if rename('c:\','my_folder','my_old_folder')
+;   "folder rename error: @serror"
+;  else
+;   "folder renamed"
+;  endif
+;
+;--------------------------------------------------------------------------------
+function rename($0,$1,$2,optional $3)
+ dim $
+;begin
+ $rename=0
+ if 8<>vartype($0) | 8<>vartype($1) | 8<>vartype($2) $rename=87 exit 87 endif
+ if '\'<>right($0,1) $0=$0+'\' endif
+ if exist($0+$2) $rename=80 exit 80 endif
+ if instr($1,'\') | instr($2,'\') $rename=87 exit 87 endif
+ if vartype($3) $3=getfileattr($0+$1) $rename=setfileattr($0+$1,128) endif
+ if $rename exit $rename endif
+ $=createobject('shell.application')
+ if vartype($)<>9 $rename=196 exit 196 endif
+ $0=$.namespace($0)
+ if vartype($0)<>9 $rename=3 exit 3 endif
+ $1=$0.parsename($1)
+ if vartype($1)<>9 $rename=2 exit 2 endif
+ $1.name=$2
+ if @error $rename=val("&"+Right(DecToHex(@error),4)) exit $rename endif
+ if vartype($3) $rename=setfileattr($1.path,128) if $rename exit $rename endif endif
+endfunction
+
+;--------------------------------------------------------------------------------
+; shellcmd($commandstring, optional $forcewait)
+;--------------------------------------------------------------------------------
+; SHELLCMD() - Executes a shell command 
+;FUNCTION      ShellCmd
+;
+;ACTION        Executes a shell command
+;
+;AUTHOR        Jens Meyer (sealeopard@usa.net)
+;
+;VERSION       1.2
+;
+;KIXTART       4.12+
+;
+;SYNTAX        SHELLCMD(COMMANDSTRING [, OPTIONAL FORCEWAIT])
+;
+;PARAMETERS    COMMANDSTRING
+;              Required string containing shell command
+;
+;RETURNS       0 if successful, otherwise error code
+;
+;REMARKS       none
+;
+;DEPENDENCIES  none
+;
+;EXAMPLE       $rc = shellcmd('%WINDIR%\notepad.exe',1)
+;
+;KIXTART BBS   http://www.kixtart.org/cgi-bin/ultimatebb.cgi?ubb=get_topic&f=12&t=000057
+;
+;--------------------------------------------------------------------------------
+function shellcmd($commandstring, optional $forcewait)
+   Dim $rc
+;begin
+   if val($forcewait)
+      $forcewait='start /min /wait '
+   else
+      $forcewait=''
+   endif
+   if $commandstring <> ''
+      $commandstring='%COMSPEC% /c '+$forcewait+$commandstring
+      shell $commandstring
+      $shellcmd=@ERROR
+   else
+      exit 87
+   endif
+endfunction
+
+;--------------------------------------------------------------------------------
+; udfPiper(optional $sCommand, optional $sKey)
+;--------------------------------------------------------------------------------
+; udfPiper() - Piping without temporary files! 
+;Changes 12 June 2002
+;PIPER.EXE now at version 1.1
+;I've removed the blocking call to avoid potential dead-locking.
+;The Sleep() is now only executed if the script hasn't already picked up the data, which will potentially speed things up.
+;
+;This is yet another pipe UDF.
+;
+;This one uses an wrapper executable to gather the output and pass it back to KiXtart via the registry, so doesn't use temporary files.
+;
+;On WinNT+ the registry call should block which will make it efficient - on Win95 I've had to kludge a 10ms sleep as the call is unsupported.
+;
+;To use this UDF you will need the executable piper.exe It is very small (5k) and is available from this link.
+;
+;For those of you that are paranoid and would prefer to compile the source yourself you can get it here.
+;Anyhoo, here is the UDF:
+;
+;Function   udfPiper()
+;
+;Author      Richard Howarth (rhowarth@sgb.co.uk)
+;
+;Version   1.1
+;
+;Amendment History
+;               11 June 2002 Version 1.1 RMH
+;                   Well that didn't last long!
+;                   Missing "EndIfs" spotted by SHAWN
+;      11 June 2002 Version 1.0 RMH First released
+;
+;Action    Starts a command and returns input
+;
+;Syntax      udfPiper(optional COMMAND,optional REGKEY)
+;
+;Parameters 
+;       COMMAND      : Dos command to start
+;              If not specified, returns a string from a
+;              previously piped command
+;      REGKEY      : Optional registry subkey
+;              If not specified, "DEFAULT" is used
+;
+;Remarks
+;      Spawns a program and returns the output a line at a time.
+;      Doesn't require a temporary file to work.
+;
+;Returns   The nex available line.
+;      Sets @ERROR=1 when all output exhausted.
+; 
+;Dependencies   Requires the "piper.exe" executable.
+; 
+; Example:
+; Break ON
+; udfPiper("dir")
+; $sInput=udfPiper()
+; While @ERROR=0
+;    $sInput ?
+;    $sInput=udfPiper()
+; Loop
+;
+;Source
+;--------------------------------------------------------------------------------
+Function udfPiper(optional $sCommand, optional $sKey)
+   Dim $ret
+;begin
+   If $sKey="" $sKey="DEFAULT" EndIf
+   $sFullKey="HKEY_CURRENT_USER\SOFTWARE\KiXtart\Piper\$sKey"
+   If $sCommand <> ""
+      $ret=AddKey($sFullKey)
+      If($ret) Exit $ret EndIf
+      $ret=WriteValue($sFullKey,"Status",0,"REG_DWORD")
+      Run('piper $sKey "$sCommand"')
+   Else
+      $ret=ReadValue($sFullKey,"Status")
+      If @ERROR @ERROR ": " @SERROR Exit @ERROR EndIf
+      While $ret <> 1
+         If $ret=3 ; All input drained.
+            $ret=DelKey($sFullKey)
+            Exit 1
+         Endif
+         $ret=ReadValue($sFullKey,"Status")
+         If @ERROR @ERROR ": " @SERROR Exit @ERROR EndIf
+      Loop
+      $udfPiper=ReadValue($sFullKey,"Input")
+      $ret=WriteValue($sFullKey,"Status",2,"REG_DWORD")
+   EndIf
+   Exit 0
+EndFunction 
+
+;--------------------------------------------------------------------------------
+; udfPiperAbort(optional $sKey)
+;--------------------------------------------------------------------------------
+Function udfPiperAbort(optional $sKey)
+;begin
+   If $sKey="" $sKey="DEFAULT" EndIf
+   $sKey="HKEY_CURRENT_USER\SOFTWARE\KiXtart\Piper\$sKey"
+   $ret=WriteValue($sKey,"Status",99,"REG_DWORD")
+EndFunction
+
+;--------------------------------------------------------------------------------
+; GUICopy2($CMD, $Source, $Destination, OPTIONAL $Flags)
+;--------------------------------------------------------------------------------
+function GUICopy2($CMD, $Source, $Destination, OPTIONAL $Flags)
+;begin
+    If not $Flags $Flags=0 Endif
+    If not exist($Source) Beep ? "Source does not exist." Exit (1) Endif
+    If not exist($Destination) Beep ? "Destination does not exist." Exit (2) Endif
+    $objShell=CreateObject("Shell.Application")
+    $objFolder=$objShell.NameSpace($Destination)
+    If not $objFolder Beep ? "Cannot create namespace. Incorrect Shell32.dll version." Exit (3) Endif
+    Select
+    Case $CMD="Copy" $objFolder.CopyHere($Source, $Flags)
+    Case $CMD="Move" $objFolder.MoveHere($Source, $Flags)
+    Case 1 Beep ? "GUICopy Syntax Incorrect. Use COPY or MOVE." $objShell=0 Exit (4)
+    EndSelect
+    $objShell=0
+    Exit @error
+endfunction
+
+;--------------------------------------------------------------------------------
+;Function:  Pipe
+;
+;Category:  String & Array
+;   
+;Action:  Submits a shell command and redirects output to an array
+;   
+;Syntax  $array = pipe("command")
+;   
+;Parameters:  Name Type  Optional  Description 
+;Command String  Required  A DOS command  
+;   
+;Remarks:  On WinNT, stderr is redirected to the NUL device (discarded). This function uses File Handle #10 - please change if conflict arises. Function creates a temporary file in %TEMP% called PIPE.TMP - deleted after use. Empty (null) lines are skipped (not included) in the output array. Piping between processes (in the command string) is supported. Do not specify redirection of output in command string
+;
+;Returns:  An array containing the output text of the DOS command. @ERROR is set to the return value of the SHELL command (winnt).
+;   
+;Dependencies:  None.
+;   
+;Examples:  $array = pipe("net users") ; load output of net users into an array
+;
+;$array = pipe("dir c:\*.ini /s /b") ; load a listing of all ini files into an array
+;
+;$array = pipe("type config.txt") ; load the contents of a text file into an array
+;
+;$ipconfig = pipe('ipconfig /all | find "Server"')
+;for each $line in $ipconfig 
+; ? $line
+;next
+;--------------------------------------------------------------------------------
+function pipe3($command)
+    dim $i,$error,$line
+    dim $array[255]
+    dim $redim $redim = ubound($array)
+    dim $tempfile $tempfile = "%temp%\pipe.tmp"
+    if exist("$tempfile")
+        del("$tempfile")
+    endif
+    if @inwin = 2 ; win9x
+        shell '%comspec% /c $command >"$tempfile"'
+    else ; winnt
+        shell '%comspec% /c $command >"$tempfile" 2>nul'
+    endif
+    $error=@error
+    if open(10,"$tempfile") = 0
+        $i=0
+        $line = readline(10)
+        while not @error
+            if $line
+                $array[$i] = $line
+                if $i = $redim
+                    $redim=$redim*2
+                    redim preserve $array[$redim]
+                endif
+                $i=$i+1
+            endif
+            $line = readline(10)
+        loop
+        $=close(10)
+        del "$tempfile"
+        if $i > 0
+            redim preserve $array[$i-1]
+            $pipe=$array
+        else
+            $pipe = 0
+        endif
+        exit $error
+    else
+        $pipe = 0
+        exit @error
+    endif
+endfunction
+
+;-------------------------------------------------------------------------------
+; UnPackFile($FileName)
+;-------------------------------------------------------------------------------
+function UnPackFile($FileName)
+   Dim $s,$f,$e,$a
+;begin
+   $s = GetFileName($FileName)
+   $a = Split($s,".")
+   $f = Join($a,".",UBound($a))
+   $e = $a[UBound($a)]
+
+   if Exist($f)
+      DelDir ($f)
+      RD "$f"
+   endif
+
+   MD $f
+   Copy "$FileName" "$f" /r
+   CD $f
+   select
+      case UCase($e) = "ZIP"
+         $ex = 'unzip "'+$f+'.'+$e+'"'
+      case UCase($e) = "ARJ"
+         $ex = 'arj x -y -v "'+$f+'.'+$e+'"'
+      case UCase($e) = "RAR"
+         $ex = 'unrar x -y "'+$f+'.'+$e+'"'
+      case 1
+         $ex = ""
+   EndSelect
+   if $ex
+      "-----------------------------------------------" ?
+      $ex ?
+      "-----------------------------------------------" ?
+      Shell $ex
+      $Error = @error
+      "-----------------------------------------------" ?
+      "Error = " $Error ?
+      if $Error = 0
+         $s = $f+'.'+$e
+         Del "$s"
+      endif
+   else
+      Del $FileName
+   endif
+   CD ".."
+endfunction
+
+;-------------------------------------------------------------------------------
+; UnPack($FileName)
+;-------------------------------------------------------------------------------
+function UnPack($FileName)
+;begin
+   $LPath = GetFilePath($FileName)
+   if $LPath <> ""
+      $LPath = $LPath+"\"
+   endif
+
+   $LFile = Dir ($FileName)
+   WHILE @ERROR = 0 AND $LFile
+      IF $LFile <> "." AND $LFile <> ".."
+         IF not (GetFileAttr ($LPath+$LFile) & 16)    ; is it a directory ?
+            if UCase($LFile) <> "UP.LOG"
+               "===============================================" ?
+               $LPath+$LFile ?
+               UnPackFile($LFile)
+            endif
+         endif
+      endif
+      if @ERROR = 0
+         $LFile = Dir("")
+      endif
+   loop
+   "===============================================" ?
+endfunction
+
+;-------------------------------------------------------------------------------
+; PackDir($DirName)
+;-------------------------------------------------------------------------------
+function PackDir($DirName,$ARC)
+   Dim $s,$f,$e,$a
+;begin
+   $s = GetFileName($DirName)
+   $a = Split($s,".")
+   $f = Join($a,"_",UBound($a)+1)
+
+? $s '|' $f '|' $ARC
+
+   if Exist($f)
+   endif
+
+   select
+      case UCase($ARC) = "ZIP"
+? "Unzip " $f "." $e " ..." ?
+         $ex = 'unzip "'+$f+'"'
+         ? $ex ?
+         Shell $ex
+      case UCase($ARC) = "ARJ"
+? "arj " $f " ..." ?
+         $ex = 'arj a -r -a -hm1 -a1 -i6 -hb "'+$f+'" "'+$s+'"'
+         ? $ex ?
+         Shell $ex
+      case UCase($ARC) = "RAR"
+? "Unrar " $f "." $e " ..." ?
+         $ex = 'unrar x -y "'+$f+'"'
+         ? $ex ?
+         Shell $ex
+   EndSelect
+endfunction
+
+;-----------------------------------------------------------------------------
+;Function:   FileAction()
+;
+;Author:   Lonkero
+;
+;Version:   1.1 (30th of November 2002)
+;
+;Action:   executes file action
+;
+;Syntax:   FileAction("FILE", "ACTION")
+;
+;Parameters:
+;      FILE   - full path to file which to execute on
+;      ACTION   - name of action
+;
+;Returns:
+;      Nothing or errorcode on error.
+;
+;      on error errorcodes returned and set:
+;         1 -no Such Action
+;         2 -Failed to bind to file
+;
+;Dependencies:
+;      w2k/xp/ME or win98 with IE 4 or others with IE4 and integrated shell
+;      see: http://msdn.microsoft.com/library/default.asp?url=/library/en-us/shellcc/platform/shell/programmersguide/versions.asp
+;
+;Remarks:
+;      File exsistence not checked.
+;      If you don't know what is file's action right click on it and the actions are listed
+;
+;Example:   
+;      $worksheet="c:\test.xls"
+;      "Printing file "+$worksheet
+;      if FileAction($worksheet,"Print")
+;         ? "error occured:" @error
+;      else
+;         ? "File Printed."
+;      endif
+;
+;-----------------------------------------------------------------------------
+function FileAction($file,$action)
+   dim $shell,$
+;begin
+   $fileaction=1
+   $shell=createobject("shell.application")
+   $file=$Shell.namespace($file).self
+   if @error  $fileaction=2 exit 2 endif
+   for each $ in $file.verbs
+      if join(split($,"&"),"")=$action
+         $file.invokeverb(""+$)
+         $fileaction=0
+      endif
+   next
+   if $fileaction exit 1 endif
+endfunction
+
+;-------------------------------------------------------------------------------
+; RegServer ($ADestPath, $AServer, optional $ASourcePath)
+;-------------------------------------------------------------------------------
+function RegServer ($ADestPath, $AServer, optional $ASourcePath, optional $Reg)
+;begin
+   if $ASourcePath
+      BacFile ($ASourcePath, $ADestPath, $AServer, True)
+   endif
+   if Exist($ADestPath+"\"+$AServer) and $Reg
+      Run "regsvr32 "+$ADestPath+"\"+$AServer+" /s"
+   endif
+endfunction
+
+;-------------------------------------------------------------------------------
+; Cat($Filename, optional $Color)
+;-------------------------------------------------------------------------------
+function Cat($Filename, optional $Color)
+   Dim $Str
+;begin
+   $Res=RedirectOutput("")
+   $SaveColor = @Color
+   if $Color COLOR $Color endif
+   $Handle = FreeFileHandle
+   if Open ($Handle, $FileName, 2) = 0
+      $Str = ReadLine ($Handle)
+      while @ERROR = 0
+         $Str ?
+         $Str = ReadLine ($Handle)
+      loop
+      $Res = Close ($Handle)
+   endif
+   if $Color COLOR $SaveColor endif
+endfunction
+
+;-------------------------------------------------------------------------------
+; SetPath
+;-------------------------------------------------------------------------------
+function SetPath($Path)
+;begin
+   $Key = "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+   $LPath = RegReadString ($Key, "Path")
+   if ExistWord($LPath, ";", $Path) = 0
+      $LPath = $Path+";"+$LPath
+      RegWriteStringExpand ($Key, "Path", $LPath)
+   endif
+endfunction
+
+;-------------------------------------------------------------------------------
+; CheckDestFileName ($FileName, $DestPath, $NLimit)
+;-------------------------------------------------------------------------------
+;function CheckDestFileName($FileName, $DestPath, $NLimit)
+;begin
+;   $LN        = Len(CStr($NLimit))
+;   $LFileName = GetFileName($FileName)
+;   $LDirName  = $DestPath
+;   $LPathName = $LDirName+"\"+GetFileNameWithoutExt($LFileName)+'.'+GetFileExt($LFileName)
+;
+;   if (Exist($LPathName))
+;      $i = 0
+;      while (Exist($LPathName)) and ($i < $NLimit)
+;         $i = $i + 1
+;         $LPathName = $LDirName+"\"+
+;                      GetFileNameWithoutExt($LFileName)+'~'+AddChar("0",CStr($i),$LN)+'.'+
+;                      GetFileExt($LFileName)
+;      loop
+;   endif
+;   $CheckDestFileName = $LPathName
+;endfunction
+
+;-------------------------------------------------
+; CheckDestFileName
+;-------------------------------------------------
+function CheckDestFileName($aFileName, $aDestPath, $aNLimit)
+DIM
+   $LFileName,$LDirName,$LPathName,$LN
+;begin
+   $LN = LEN(CSTR($aNLimit))
+   $LFileName = GetFileName($aFileName)
+   $LDirName  = $aDestPath
+   ;$LPathName = $LDirName+"\"+$LFileName
+   $LPathName = $LDirName+"\"+GetFileNameWithoutExt($LFileName)+"."+GetFileExt($LFileName)
+
+   if (EXIST($LPathName))
+      $i = 0
+      while (EXIST($LPathName)) and ($i < $aNLimit)
+         $i = $i + 1
+         $LPathName = $LDirName+"\"+
+                      GetFileNameWithoutExt($LFileName)+"~"+AddChar("0",CSTR($i),$LN)+"."+
+                      GetFileExt($LFileName)
+      loop
+   endif
+   $CheckDestFileName = $LPathName
+EndFunction
+
+;-------------------------------------------------------------------------------
+; DelStrFromFile($Filename, $StrFind)
+;-------------------------------------------------------------------------------
+function DelStrFromFile($Filename, $StrFind)
+   Dim $Str
+;begin
+   $Res=RedirectOutput("")
+
+   $Handle = FreeFileHandle
+   if Open ($Handle, $FileName, 2) = 0
+
+      $OutFile = "list1.m3u"
+      Del $OutFile
+      $HandleOutFile = FreeFileHandle
+      $Res = Open ($HandleOutFile, $OutFile, 1+4)
+
+      $Str = ReadLine ($Handle)
+      $Error = @ERROR
+
+      while $ERROR = 0
+
+         $Str ?
+
+         $Begin1 = 1
+         $End1   = InStr($Str, $StrFind) - 1 
+         $Begin2 = $End1 + Len($StrFind) + 1
+         $End2   = Len($Str)
+         $StrOut1 = ""
+         $StrOut2 = ""
+         if $End1 > 0 
+            $StrOut1 = Substr($Str, $Begin1, $End1) 
+         endif
+
+         if $End2-Begin2 > 0 
+            $StrOut2 = Substr($Str, $Begin2+1, $End2-$Begin2) 
+         endif
+         $StrOut = $StrOut1 + $StrOut2
+
+         $StrOut ?
+
+         $Res = WriteLine ($HandleOutFile, $StrOut+@CRLF)
+
+         $Str = ReadLine ($Handle)
+         $Error = @ERROR
+      loop
+
+      $Res = Close ($Handle)
+
+      if ($OutFile)
+         $Res = Close ($HandleOutFile)
+      endif
+
+   endif
+endfunction
+
+;-------------------------------------------------------------------------------
+; CreateTextFile
+;-------------------------------------------------------------------------------
+function CreateTextFile($Filename, optional $aText)
+;begin
+   $HandleTextFile = FreeFileHandle
+   if $aText
+      $Res = Open ($HandleTextFile, $FileName, 5)
+      $Res = WriteLine ($HandleTextFile, $aText)
+      $Res = Close ($HandleTextFile)
+   else
+      Del $FileName
+      $Res = Open ($HandleTextFile, $FileName, 5)
+      $Res = WriteLine ($HandleTextFile, "")
+      $Res = Close ($HandleTextFile)
+   endif
+endfunction

@@ -1,0 +1,851 @@
+;----------------------------------------------------------------------------
+; LUArray.kxl
+;----------------------------------------------------------------------------
+; CountArray($Array)
+; ArraySort($array, optional $order)
+; ArrayPack($array)
+; ArrayComp($array1, $array2, optional $switch)
+; ArrayConverter($array,$action)
+; ArrayFilter($array,$find, optional $inclusive)
+; InsertIntoArray($Array,$Element,Optional $Pointer)
+; DelFromArray($Array,$Pointer)
+; InArray($Array,$String,Optional $Ptr)
+; IsArray($variable)
+; QSort($array,optional $order, optional $left, optional $right)
+; QSort2($Array)
+; Uniq($A)
+;----------------------------------------------------------------------------
+
+;----------------------------------------------------------------------------
+; CountArray($Array)
+;----------------------------------------------------------------------------
+function CountArray($Array)
+   Dim $j
+;begin
+   if vartype($Array) & 8192
+      $j = 0
+      while (VarType($Array[$j]) > 0) and ($j < UBound($Array))
+         $j = $j + 1
+      loop
+      $CountArray = $j
+   else
+      $CountArray = -1
+   endif
+endfunction
+
+;----------------------------------------------------------------------------
+; IndexOf ($Array, $S)
+;----------------------------------------------------------------------------
+function IndexOf ($Array, $S)
+;begin
+   $i = 0
+   $Done = 1
+   while $Done and ($i <= UBound($Array))
+      $j = INSTR(UCase($S), UCase($Array[$i]))
+      if $j
+         $IndexOf = $i
+         $Done = 0
+      endif
+      $i = $i + 1
+   loop
+   if $Done
+      $IndexOf = -1
+   endif
+endfunction
+
+;--------------------------------------------------------------------------------
+; ArrayPack($array)
+;--------------------------------------------------------------------------------
+Function ArrayPack($array)
+   dim $loop
+   dim $arrTemp[0]
+;begin
+   If Not VarType($Array) & 8192 Exit(1) Return EndIf
+   $loop = -1
+   for each $element in $array
+      if $element > ' '
+         $loop = $loop + 1
+         redim preserve $arrTemp[$loop]
+         $arrTemp[$loop] = $element
+      endif
+   next
+   if ubound($arrTemp) = -1 Exit(2) Return Endif
+   $ArrayPack = $arrTemp
+endFunction
+
+;--------------------------------------------------------------------------------
+; ArrayComp($array1, $array2, optional $switch)
+;--------------------------------------------------------------------------------
+;Function:   arraycomp
+;
+;Author:   Darren Whittington
+;
+;Contributors:   jpols, Lonkero
+;
+;Version:   1.2 (25th of Febuary 2003)
+;
+;Modifications:
+;
+;       1.1 Modified coding, added optional parameter
+;       to return matching or non matching elements.
+;       1.2 Modified coding to accommodate spaces in array values
+;
+;Action:   Compares two 1 Dimensional Arrays
+;
+;Syntax:   ArrayComp(Array1,Array2,optional Switch)
+;
+;Parameters:
+;      $Array1   - Source Array
+;      $Array2   - Comparison Array
+;      1 = Switch to toggle on matching
+;
+;Returns:
+;      Strings that are in $Array2 but not in $Array1, or strings
+;      common to both.
+;
+;Dependencies:
+;      Kixtart v 4.20
+;
+;Remarks:
+;      Not case sensative
+;
+;
+;Examples:
+;
+;      $arr1 = a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
+;      $arr2 = 1,2,3,4,f,g,a,34,42,23,c,z,o,r
+;
+;      "results for arraycomp(); elements that don't match:" ? ?
+;      for each $e in arraycomp($arr1, $arr2)
+;          ":" $e ?
+;      next
+;
+;      ? "results for arraycomp(); matching elements:" ? ?
+;      for each $e in arraycomp($arr1, $arr2, 1)
+;          ":" $e ?
+;      next
+;
+;      get $
+;
+;--------------------------------------------------------------------------------
+function ArrayComp($array1, $array2, optional $switch)
+   dim $rtnstr,$string
+;begin
+   for each $string in $array2
+      if (ascan($array1,$string)>-1&$switch) | ascan($array1,$string)+$switch<0 $rtnstr=$rtnstr+chr(1)+$string
+      endif
+   next
+   $arraycomp=split(substr($rtnstr,2),chr(1))
+endfunction
+
+;--------------------------------------------------------------------------------
+; ArrayConverter($array,$action)
+;--------------------------------------------------------------------------------
+;FUNCTION      ArrayConverter
+;
+;ACTION        Applies the specified command to a string/array
+;
+;AUTHOR        Jens Meyer (sealeopard@usa.net)
+;
+;VERSION       1.4
+;
+;KIXTART       4.20
+;
+;DATE CREATED  2002/12/01
+;
+;DATE MODIFIED 2003/03/02
+;
+;SYNTAX        ARRAYCONVERTER(STRING,CMD)
+;
+;PARAMETERS    STRING
+;              Required string or array to which the command will be applied
+;
+;              CMD
+;              Required command to be performed (ABS,ASC,CDBL,CHR,CINT,CSTR,
+;              DECTOHEX,FIX,INT,LEN,LCASE,LTRIM,RTRIM,SIDTONAME,TRIM,UCASE,VAL)
+;
+;RETURNS       Input string/array with applied specified command
+;
+;REMARKS       Function converts an array with a maximum of 26 dimensions. See also AVal(), ADbl(), and ATrim().
+;
+;DEPENDENCIES  none
+;
+;EXAMPLE       $array[0]='12.2'
+;              $array[1]='12.3'
+;              $rc=ArrayConverter($array,'FIX')
+;
+;KIXTART BBS   http://www.kixtart.org/cgi-bin/ultimatebb.cgi?ubb=get_topic&f=12&t=000315
+;
+;--------------------------------------------------------------------------------
+function ArrayConverter($array,$action)
+   Dim $a, $arraydim, $rc, $cmds, $cmd, $vars
+;begin
+   $cmds='ABS,ASC,CDBL,CHR,CINT,CSTR,DECTOHEX,FIX,INT,LEN,LCASE,LTRIM,RTRIM,SIDTONAME,TRIM,UCASE,VAL'
+   if ascan($cmds,$action)=-1
+      $arrayconverter=$array
+      return
+   endif
+   select
+      case ubound($array,1)=-1
+         $cmd='$array='+$action+'($array)'
+         $rc=execute($cmd)
+      case ubound($array,2)=-1
+         for $a=0 to ubound($array)
+            $cmd='$array['+$a+']='+$action+'($array['+$a+'])'
+            $rc=execute($cmd)
+         next
+      case ubound($array,27)=-1
+         $arraydim=0
+         do
+            $arraydim=$arraydim+1
+         until ubound($array,$arraydim)=-1
+         $arraydim=$arraydim-1
+         if $arraydim<=26
+            $vars='$sub_a'
+            for $a=2 to $arraydim
+               $vars=$vars+', $sub_'+chr($a+96)
+            next
+            $cmd='dim '+$vars+@CRLF
+            for $a=1 to $arraydim
+               $cmd=$cmd+'for $sub_'+chr($a+96)+'=0 to ubound($array,'+$a+')'+@CRLF
+            next
+            $cmd=$cmd+'$array['+$vars+']='+$action+'($array['+$vars+'])'+@CRLF
+            for $a=1 to $arraydim
+               $cmd=$cmd+'next'+@CRLF
+            next
+            $rc=execute($cmd)
+         endif
+      case 1
+   endselect
+   $arrayconverter=$array
+endfunction
+
+;--------------------------------------------------------------------------------
+; ArrayFilter($array,$find, optional $inclusive)
+;--------------------------------------------------------------------------------
+;Function FilterArray()
+;
+;Author Radimus
+;
+;Contributors Lonkero provided the array building string concept
+;
+;Action returns a filtered array containing eiter all the elements (or none
+; of the elements) of an array matching a specified string.
+;
+;Syntax FilterArray($array,'find me', 1)
+;
+;Version 1.0
+;
+;Date 8/25/03
+;
+;Date Revised
+;
+;Parameters Array - Must be an array
+; Filter - a string to search for
+; Inclusive - any value, null or zero will return elements not containing the
+; filter, any other value will return elements containing the filter value
+;
+;Remarks think of the "find" command in DOS cmd language
+;
+;Returns Returns an array of filtered items
+;
+;Dependencies None
+;
+;KiXtart Ver 4.02
+;
+;Example(s) shell "cmd /c ping $server >$file"
+; $pingreturn = ReadFile($file)
+; $replies = FilterArray($pingreturn,'Reply from', 1)
+;
+;--------------------------------------------------------------------------------
+Function ArrayFilter($array,$find, optional $inclusive)
+   Dim $lf, $t, $l, $sp
+;begin
+   $lf=chr(10) $sp=chr(32)
+   If Not VarType($Array) & 8192 Exit(1) EndIf
+   for each $l in $array
+      if (instr($l,$find) and $inclusive and trim($l)> $sp) or (not instr($l,$find) and not $inclusive and trim($l)> $sp)
+         $t=$t+$lf+$l
+      endif
+   next
+   $ArrayFilter=split(substr($t,2),$lf)
+EndFunction
+
+;--------------------------------------------------------------------------------
+; InsertIntoArray($Array,$Element,Optional $Pointer)
+;--------------------------------------------------------------------------------
+;Author Jan Schulenburg (jan.schulenburg@tui.nl)
+;
+;Function InsertIntoArray
+;
+;Parameters 1: Required, array.
+; 2: Required, string to insert into array.
+; 3: Optional, number indicating pointer to insert string. If none or number
+; is greater then the number of elements in array, string will be added to
+; the end of the array.
+;
+;Remarks none.
+;
+;Returns array, @error=0 if succesfull, >0 if failed
+;
+;Dependencies None
+;
+;Example(s) $Array = 'aaa','bbb','ddd'
+; $Array = InsertIntoArray($Array,'eee')
+; returns an array containing 'aaa','bbb','ddd','eee'
+;
+; $Array = InsertIntoArray($Array,'ccc',2)
+; returns an array containing 'aaa','bbb','ccc','ddd','fff'
+;
+; $Array = InsertIntoArray($Array,'ccc',-100)
+; returns an array containing 'aaa','bbb','ccc','ddd','fff'
+;
+;--------------------------------------------------------------------------------
+Function InsertIntoArray($Array,$Element,Optional $Pointer)
+   Dim $Index,$Elm,$UArray
+;begin
+   ; Check parameters..
+   If Not VarType($Array) Exit(1) Else $InsertIntoArray=$Array $UArray=UBound($Array)+1 EndIf
+   If Not VarType($Element) Exit(2) Else If $Element='' Exit(3) EndIf EndIf
+   If Not VarType($Pointer)
+      $Pointer=$UArray
+   Else
+      Select
+         Case Val($Pointer)<0
+            Exit(4)
+         Case 0+$Pointer > 0+$UArray
+            $Pointer=$UArray
+      EndSelect
+   EndIf
+
+   Redim $InsertIntoArray[$UArray]
+   $Index=0
+
+   ; Loop given array..
+   For Each $Elm In $Array
+      If $Index=$Pointer
+         ; Insert new element..
+         $InsertIntoArray[$Index]=$Element
+         $Index=$Index+1
+      EndIf
+
+      ; Add existing element..
+      $InsertIntoArray[$Index]=$Elm
+      $Index=$Index+1
+   Next
+
+   ; Add to end of array..
+   If $Index=$Pointer
+      $InsertIntoArray[$Index]=$Element
+   EndIf
+EndFunction
+
+;--------------------------------------------------------------------------------
+; DelFromArray($Array,$Pointer)
+;--------------------------------------------------------------------------------
+;Author Jan Schulenburg (jan.schulenburg@tui.nl)
+;
+;Function DelFromArray
+;
+;Parameters 1: Required, array.
+; 2: Required, number indicating pointer to delete.
+;
+;Remarks none.
+;
+;Returns array, @error=0 if succesfull, >0 if failed
+;
+;Dependencies None
+;
+;Example(s) $Array = 'aaa','bbb','ccc','ddd','eee'
+; $Array = DelFromArray($Array,0)
+; returns an array containing 'bbb','ccc','ddd','eee' (delete element 0)
+;
+; $Array = DelFromArray($Array,2)
+; returns an array containing 'bbb','ccc','eee' (delete element 2)
+;
+; $Array = DelFromArray($Array,10)
+; returns an array containing 'bbb','ccc','eee' (no change)
+;
+;--------------------------------------------------------------------------------
+Function DelFromArray($Array,$Pointer)
+   Dim $Index,$NewIndex,$Elm
+;begin
+   ; Check parameters..
+   If Not VarType($Array) Exit(1) EndIf
+   If Not VarType($Pointer) Exit(2)
+   Else
+      If 0+$Pointer >UBound($Array) Or 0+$Pointer <0
+         $DelFromArray=$Array
+         Exit(3)
+      EndIf
+   EndIf
+
+   Redim $DelFromArray[UBound($Array)-1]
+   $Index=0 $NewIndex=0
+
+   ; Loop given array..
+   For Each $Elm In $Array
+      If $Index<>$Pointer
+         ; Add element to array..
+         $DelFromArray[$NewIndex]=$Elm
+         $NewIndex=$NewIndex+1
+      EndIf
+      $Index=$Index+1
+   Next
+EndFunction
+
+;--------------------------------------------------------------------------------
+; InArray($Array,$String,Optional $Ptr)
+;--------------------------------------------------------------------------------
+;Function       InArray
+; InArray() - search in a multi-dimensional array for a string
+;
+;Parameters     1: Required, array.
+;               2: Required, string to search for in array. Wildcard is supported.
+;               3; Optional, used in UDF.
+;
+;Remarks        none.
+;
+;Returns        Array of the element in which the string was first found. If the search
+;               string matches an element in the array, it returns the position of that
+;               element + 1 (so it starts with 1!). @error=0 if succesfull, >0 if failed
+;
+;Dependencies   IsArray UDF
+;
+;Example(s)     $Array11 = 'aaa','bbb','ccc'
+;               $Array12 = 'abc','def','ghi','jkl','mno','pqr'
+;               $Array13 = 'kix32','is','great!'
+;               $Array1  = $Array11,$Array12,$Array13
+;               $Array2  = '123','456','789','100'
+;               $Array3  = 'no array'
+;               $Array4  = 'if','then','else','endif'
+;               $Array   = $Array1,$Array2,$Array3,$Array4
+;
+;               $Array = InArray($Array,'else')   returns '4,3'
+;               $Array = InArray($Array,'great!') returns '1,3,3'
+;               $Array = InArray($Array,'*array') returns '3'
+;
+;--------------------------------------------------------------------------------
+Function InArray($Array, $String, Optional $Ptr)
+   Dim $RC,$Count,$Str,$Cnt
+;begin
+   $InArray=0
+   $Str=''
+
+   ; Check parameters..
+   If Not VarType($String) Exit(2) EndIf
+   If Not IsArray($Array)  Exit(1)
+   Else
+      For $Count=0 to UBound($Array)
+         Select
+            ; Is Array..
+            Case IsArray($Array[$Count])
+               $RC = InArray($Array[$Count],$String,1)
+               If $RC <> 0
+                  $InArray = ''+($Count+1)+',$RC'
+                  $Count = UBound($Array)
+               EndIf
+
+            ; Wildcards in string..
+            Case InStr($String,'*') <> 0
+               If $Str=''
+                  $Str = Strip($String,'*')
+               EndIf
+               ; Search in string..
+               If InStr($Array[$Count],$Str)<>0
+                  $InArray = $Count+1
+                  $Count = UBound($Array)
+               EndIf
+
+            ; Just string compare..
+            Case $Array[$Count] = $String
+               $InArray = $Count+1
+               $Count = UBound($Array)
+
+         EndSelect
+      Next
+   EndIf
+
+   ; Return array, only at top level..
+   If Not $Ptr And InStr($InArray,',')
+      $InArray = Split($InArray,',')
+   EndIf
+EndFunction
+
+;--------------------------------------------------------------------------------
+; IsArray($variable)
+;--------------------------------------------------------------------------------
+;FUNCTION      IsArray
+;IsArray() - Checks whether a variable is an array
+;
+;AUTHOR        Jens Meyer (sealeopard@usa.net)
+;
+;ACTION        Checks whether a variable is an array
+;
+;SYNTAX        ISARRAY(VARIABLE)
+;
+;PARAMETERS    VARIABLE
+;              Required variable to be checked for being an array
+;
+;RETURNS       1 if array, otherwise 0
+;
+;REMARKS       none
+;
+;DEPENDENCIES  none
+;
+;EXAMPLE       Dim $array[10]
+;              $retcode=isarray($array)
+;
+;KIXTART BBS   http://kixtart.org/cgi-bin/ultimatebb.cgi?ubb=get_topic&f=12&t=000088
+;
+;--------------------------------------------------------------------------------
+function IsArray($variable)
+;begin
+   $isarray=((vartype($variable) & 8192)=8192)
+endfunction
+
+;----------------------------------------------------------------------------
+; ArraySort($array, optional $order)
+;  $order=[0,1]
+;----------------------------------------------------------------------------
+function ArraySort($array, optional $order)
+   dim $i,$j,$m,$n
+;begin
+   if ubound($array)
+      $n = CountArray($array)
+      for $i = 0 to $n-1
+         $m = $array[$i]
+         for $j = $i + 1 to $n-1
+            if ($array[$j] < $m and not $order) or ($array[$j] > $m and $order)
+               $m = $array[$j]
+               $array[$j] = $array[$i]
+               $array[$i] = $m
+            endif
+         next
+      next
+      $ArraySort = $array
+   else
+      $ArraySort = 0
+   endif
+endfunction
+
+function ASort($array, OPTIONAL $order)
+    ; sort order: 0 = ascending, 1 = decending
+    dim $index, $x, $y, $tmp, $changed
+    $Asort=$array
+    $order=0+$order
+    do
+        $changed=0
+        for $index = 0 to ubound($asort)-1
+            $x=$asort[$index]
+            $y=$asort[$index+1]
+            if ($x > $y and 1-$order) or ($x < $y and $order)
+                $tmp=$x
+                $asort[$index]=$y
+                $asort[$index+1]=$tmp
+                $changed=1
+            endif
+        next
+    until $changed=0
+endfunction
+
+;--------------------------------------------------------------------------------
+; QSort($array, optional $order, optional $left, optional $right)
+;--------------------------------------------------------------------------------
+;QSort()
+;
+;Action:
+;
+;Quick sort for kixtart arrays.
+;
+;Syntax:
+;
+;array = qsort(array [, order ])
+;
+;Parameters:
+;
+;Array (Required) - A single dimensional kixtart array
+;
+;Order (Optional) - The sort order (0/1). If omitted or set to zero, the
+;array will be sorted in ascending order. If set to 1, the array will be sorted
+;in descending order.
+;
+;Returns:
+;
+;The sorted array
+;
+;Remarks:
+;
+;A recursive sorting algorithm first developed by C.A.R Hoare in 1962. Given an array,
+;one element is choosen and the others are partitioned into two subsets - those less
+;than the partition element and those greater than or equal to it. The same process is
+;then applied recursively to the two subsets. When a subset has fewer than two elements,
+;it doesn't need any sorting; this stops the recursion. [Kernighan&Ritchie 1978]
+;
+;Dependencies:
+;
+;kixtart 4.0 (final)
+;
+;Example(s):
+;
+;code:
+;--------------------------------------------------------------------------------
+;
+;$array = Peach,Pumpkin,Orange,Grape,Lime,Apple,Rasberry,Cherry,Lemon
+;
+;$array = qsort($array) ; sort ascending
+;for each $element in $array
+; ? $element
+;next
+;
+;$array = 1,2,3,4,5
+;
+;$array = qsort($array,1) ; sort descending
+;for each $element in $array
+; ? $element
+;next
+;
+;$array = qsort(split("Z Q G A D M U V N K I X W J T S C R H B L E F P O Y"))
+;
+;for each $letter in $array
+; $letter
+;next
+;--------------------------------------------------------------------------------
+function QSort($array, optional $order, optional $left, optional $right)
+   dim $temp,$last,$i,$j
+;begin
+   if vartype($left) = 0
+      $qsort = qsort ($array,$order,0,ubound($array))
+      return
+   endif
+   if $left >= $right
+      $qsort = $array
+      return
+   endif
+   $temp = $array[$left]
+   $j = ($left+$right) / 2
+   $array[$left] = $array[$j]
+   $array[$j] = $temp
+   $last = $left
+   for $i=$left+1 to $right
+      if ($array[$i] &lt; $array[$left] and not $order) or ($array[$i] > $array[$left] and $order)
+         $last=$last+1
+         $temp=$array[$last]
+         $array[$last]=$array[$i]
+         $array[$i]=$temp
+      endif
+   next
+   $temp = $array[$left]
+   $array[$left] = $array[$last]
+   $array[$last] = $temp
+   $qsort = qsort($array,$order,$left,$last-1)
+   $qsort = qsort($qsort,$order,$last+1,$right)
+endfunction
+
+;--------------------------------------------------------------------------------
+;break on
+;
+;; BENCHMARK
+;
+;; create an array and seed with rnd numbers
+;
+;srnd(1)
+;dim $array[500]
+;for $i = 0 to ubound($array)
+;   $array[$i] = rnd(100)
+;next
+;
+;$start = @ticks
+;
+;$array = qsort($array)
+;
+;?"elapsed=" @ticks - $start
+;
+;exit 1
+;--------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------
+; QSort2($Array)
+;--------------------------------------------------------------------------------
+;QSort() - quick sorting for (large) one dimensional arrays
+;
+;Action:
+;Quick sort for kixtart arrays
+;
+;Syntax:
+;$array = QSort($array)
+;
+;Parameters:[b]
+;$Array - A single dimensional KiXtart array
+;
+;[b]Returns:
+;The sorted array
+;
+;On error (Wrong parameter type)
+;Returns the parameter unmodified, and @Error set to 1
+;
+;Remarks:
+;To be used when sorting big arrays, when sorting smaller arrays, (Less then 100 members)
+;you might as well use Shawns optimized version of bublesort.
+;
+;QSort() is split into two functions: QSort() and QSExec(). QSExec() is the sorting engine,
+;whitch splits the array into smaller arrays and sort these smaller arrays using recursion.
+;
+;To make QSort() capable of also sorting in descending order is mutch more complex than making
+;the BSort() do this, i think i will prefere to write a new function: QSortD() to do this job.
+;
+;Bencmark idea and example stolen from Shawn's BSort()
+;
+;Dependencies:
+;kixtart 4.01
+;
+;Example:
+;
+;code:
+;--------------------------------------------------------------------------------
+;
+;  $array = QSort(Split("Z Q G A D M U V N C B T W J X S K R H I L E F P O Y"))
+;  For Each $letter In $array
+;    $letter
+;  Next
+;
+;--------------------------------------------------------------------------------
+; QSExec($Start,$End,$QSArray)
+;--------------------------------------------------------------------------------
+Function QSExec($Start, $End, $QSArray)
+   Dim $Min,$Max,$Mid,$Tmp
+;begin
+   $Min = $Start
+   $Max = $End
+   $Mid = $QSArray[($Min + $Max) / 2]
+   Do
+      While $QSArray[$Min] < $Mid
+         $Min = $Min + 1
+      Loop
+      While $Mid < $QSArray[$Max]
+         $Max = $Max - 1
+      Loop
+      If $Min <= $Max
+         $Tmp = $QSArray[$Min]
+         $QSArray[$Min] = $QSArray[$Max]
+         $QSArray[$Max] = $Tmp
+         $Min = $Min + 1
+         $Max = $Max - 1
+      EndIf
+   Until $Min > $Max
+   If $Start < $Max
+      $QSArray = QSExec($Start,$Max,$QSArray)
+   EndIf
+   If $Min < $End
+      $QSArray = QSExec($Min,$End,$QSArray)
+   EndIf
+   $QSExec = $QSArray
+EndFunction
+
+;--------------------------------------------------------------------------------
+; QSort2($Array)
+;--------------------------------------------------------------------------------
+Function QSort2($Array)
+   If VarType($Array) & 8192
+      $QSort = QSExec(0,UBound($Array),$Array)
+   Else
+      $QSort = $Array
+      Exit 1
+   EndIf
+EndFunction
+
+;--------------------------------------------------------------------------------
+;
+;Benchmark
+;
+;code:
+;--------------------------------------------------------------------------------
+;Using an array of 1000 members with random numbers 0 - 1500 to demonstrate when
+;there is reason to use QSort() instead of BSort()
+;
+;Uses functions:
+;  BSort()
+;  QSort()
+;  QSExec()
+;
+;Creates files: BS.txt and QS.txt in current dir, to check if sorting was done correctly.Break On
+;
+;SRnd(@Ticks)
+;Dim $SArray[1000]
+;For $i = 0 To UBound($SArray)
+;   $SArray[$i] = Rnd(1500)
+;Next
+;
+;$Start = @Ticks
+;$QArray = QSort($SArray)
+;?"Elapsed time for QSort=" @Ticks - $Start
+;
+;$File = @CurDir + '\QS.txt'
+;Del $File
+;$RC = Open(1,$File,5)
+;For Each $Element In $QArray
+;   $RC = WriteLine(1, '$Element' + @CRLF)
+;Next
+;$RC = Close(1)
+;
+;$Start = @Ticks
+;$BArray = BSort($SArray)
+;?"Elapsed time for BSort=" @Ticks - $Start
+;
+;$File = @CurDir + '\BS.txt'
+;Del $File
+;$RC = Open(1,$File,5)
+;For Each $Element In $BArray
+;   $RC = WriteLine(1, '$Element' + @CRLF)
+;Next
+;$RC = Close(1)
+;
+;? 'Press a key '
+;Get $x
+;
+;Return
+;--------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------
+; Uniq($A)
+;--------------------------------------------------------------------------------
+;
+;FUNCTION uniq()
+;
+;ACTION Removes duplicates from a sorted, 1-dimension array
+;
+;AUTHOR Glenn Barnas / FRIT-EROC
+;
+;SYNTAX uniq(array)
+;
+;PARAMETERS array - array to remove duplicates from
+;
+;REMARKS Array must be sorted first - no check for sort is performed
+;
+;RETURNS array with duplicate items removed
+;
+;DEPENDENCIES none
+;
+;TESTED WITH NT4, W2K, WXP
+;
+;EXAMPLES $Singles = Uniq($has_dups)
+;
+;--------------------------------------------------------------------------------
+Function Uniq($A)
+   ; $TOP is last entry, $X is source pointer, $Y is destination pointer
+   Dim $Top, $X, $Y
+   Dim $WA[$Top] ; Create working array
+;begin
+   $Top = UBound($A) ; Find size of original array
+   $Y = 1 ; output array pointer
+   $WA[0] = CStr($A[0]) ; copy first element
+   For $X = 1 to $Top
+      If $WA[$Y - 1] <> $A[$X] ; is current value different from last?
+         $WA[$Y] = CStr($A[$X]) ; add it to output
+         $Y = $Y + 1 ; increment output pointer
+      EndIf
+   Next
+
+   ReDim Preserve $WA[$Y - 1] ; resize output array
+   $uniq = $WA ; return the array of unique elements
+EndFunction

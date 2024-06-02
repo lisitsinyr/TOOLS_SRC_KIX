@@ -1,0 +1,123 @@
+;=======================================================================================
+; TrimFiles
+;=======================================================================================
+   BREAK ON
+
+;=======================================================================================
+; Uses
+;=======================================================================================
+   if not $KxlDir Call "\\S73FS01\APPInfo\Tools\KxlDir.kxl" endif
+   Call $KxlDir+"\UDF\LUFile.kxl"
+   Call $KxlDir+"\UDF\LUSupport.kxl"
+   Call $KxlDir+"\UDF\LUStrings.kxl"
+   Call $KxlDir+"\UDF\LUWord.kxl"
+
+;main
+   ;=======================================================================================
+   $Log = 30 
+   $LogDir = %TEMP%
+   $LogFile = "TrimFiles.log"
+   $LogFile = LogFileName($Log,$LogDir,$LogFile)
+
+   if $D
+      $SourcePath = $D
+   else
+      $SourcePath = @Curdir
+   endif
+   if $M
+      $Mask = $M
+   else
+      $Mask = "*.*"
+   endif
+
+   Scan ($SourcePath, $Mask)
+
+;-------------------------------------------------------------------------------
+; CScanFile ($ASourcePath, $AMask)
+;-------------------------------------------------------------------------------
+function CScanFile ($ASourcePath, $AMask)
+   Dim $LResult
+;begin
+   $LFile = Dir ($ASourcePath+"\"+$AMask)
+   WHILE @ERROR = 0 AND $LFile
+      IF $LFile <> "." AND $LFile <> ".."
+         IF (GetFileAttr ($ASourcePath + "\" + $LFile) & 16)=0
+            $LFileNameSource = $ASourcePath + "\" + $LFile
+            $LFileSizeSource = GetFileSize ($LFileNameSource)
+            $LFileTimeSource = GetFileTime ($LFileNameSource)
+            $FileExt = GetFileExt($LFileNameSource)
+            $LFileNameDest = $ASourcePath+"\"+$LFile+"_"
+
+            $Handle = FreeFileHandle()
+            if $Handle > 0
+               if Open ($Handle, $LFileNameSource) = 0
+
+                  LogAdd ($Log, $LogFile, "P", $LFileNameSource)
+
+                  $HandleOut = FreeFileHandle()
+                  $Res = Open ($HandleOut, $LFileNameDest, 1+4)
+
+                  $s = ReadLine($Handle)
+                  while @Error = 0
+                     $s = RTrim($s)
+                     $Res = WriteLine ($HandleOut, $s+@CRLF)
+                     $s = ReadLine($Handle)
+                  loop
+                  $Res = Close ($Handle)
+
+                  $Res = Close ($HandleOut)
+
+               endif
+            endif 
+
+         endif
+      endif
+      if @ERROR = 0
+         $LFile = Dir("")
+      endif
+   loop
+EndFunction
+
+;-------------------------------------------------------------------------------
+; ScanDir ($ASourcePath, $AMask)
+;-------------------------------------------------------------------------------
+function CScanDir ($ASourcePath, $AMask)
+;begin
+   $LFile = Dir ($ASourcePath+"\*.*")
+   LogAdd ($Log, $LogFile, "P", $ASourcePath)
+   WHILE @ERROR = 0 AND $LFile
+      IF $LFile <> "." AND $LFile <> ".."
+         IF GetFileAttr ($ASourcePath + "\" + $LFile) & 16    ; is it a directory ?
+            $LSourcePath = $ASourcePath + "\" + $LFile
+            CScanFile($LSourcePath, $AMask)
+            CScanDir($LSourcePath, $AMask)
+         endif
+      endif
+      if @ERROR = 0
+         $LFile = Dir("")
+      endif
+   loop
+EndFunction
+
+;-------------------------------------------------------------------------------
+;  Scan ($ASourcePath, $AMask)
+;-------------------------------------------------------------------------------
+function Scan ($ASourcePath, $AMask)
+;begin
+   if $ASourcePath
+      $LSourcePath = $ASourcePath
+   else
+      $LSourcePath = @CurDir
+   endif
+   if $AMask
+      $LMask = $AMask
+   else
+      $LMask = "*.log"
+   endif
+   $LMask = "*.log"
+   $LSourcePath = @CurDir
+   CScanFile ($LSourcePath, $LMask)
+   ;CScanDir  ($LSourcePath, $LMask)
+EndFunction
+
+;end

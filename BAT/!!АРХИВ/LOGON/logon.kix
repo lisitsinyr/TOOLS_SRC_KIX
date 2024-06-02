@@ -1,0 +1,434 @@
+;=======================================================================================
+; Logon.kix
+;=======================================================================================
+   BREAK ON
+
+;=======================================================================================
+; Uses
+;=======================================================================================
+
+   if not $KxlDir Call "\\S73FS01\APPInfo\Tools\KxlDir.kxl" endif
+   Call $KxlDir+"\UDF\LUConst.kxl"
+   Call $KxlDir+"\UDF\LURegistry.kxl"
+   Call $KxlDir+"\UDF\LUNet.kxl"
+   Call $KxlDir+"\UDF\LUSupport.kxl"
+   Call $KxlDir+"\UDF\LUStrings.kxl"
+   Call $KxlDir+"\UDF\LUFile.kxl"
+   Call $KxlDir+"\UDF\LUArray.kxl"
+   Call $KxlDir+"\UDF\LUADS.kxl"
+   Call $KxlDir+"\UDF\LULDAP.kxl"
+   Call $KxlDir+"\UDF\LUIniFiles.kxl"
+   Call $KxlDir+"\UDF\LUWMI.kxl"
+
+   Call $KxlDir+"\Logon.kxl"
+   Call $KxlDir+"\APPTools.kxl"
+   Call $KxlDir+"\APPLinks.kxl"
+
+   ;--------------------------------------------------------------------------------------
+   $FileINI_REGION_RKC13        = $KxlDir+"\"+"Maps_REGION_RKC13.ini"
+   $FileINI_REGION_RKC13_NEW    = $KxlDir+"\"+"Maps_REGION_RKC13_NEW.ini"
+   $FileINI_REGION_RKC13_NEW_22 = $KxlDir+"\"+"Maps_REGION_RKC13_NEW_22.ini"
+   ;--------------------------------------------------------------------------------------
+   $FileINI_DSP73_RKC13         = $KxlDir+"\"+"Maps_DSP73_RKC13.ini"
+   $FileINI_DSP73_RKC13_NEW     = $KxlDir+"\"+"Maps_DSP73_RKC13_NEW.ini"
+   ;--------------------------------------------------------------------------------------
+   $FileINI_DSP73_REGION        = $KxlDir+"\"+"Maps_DSP73_REGION.ini"
+   $FileINI_DSP73_REGION_NEW    = $KxlDir+"\"+"Maps_DSP73_REGION_NEW.ini"
+   $FileINI_DSP73_REGION_NEW_22 = $KxlDir+"\"+"Maps_DSP73_REGION_NEW_22.ini"
+   ;--------------------------------------------------------------------------------------
+   $FileINI_REGION              = $KxlDir+"\"+"Maps_REGION.ini"
+   $FileINI_REGION_NEW          = $KxlDir+"\"+"Maps_REGION_NEW.ini"
+   $FileINI_REGION_NEW_22       = $KxlDir+"\"+"Maps_REGION_NEW_22.ini"
+   ;--------------------------------------------------------------------------------------
+   $FileINI_DSP73               = $KxlDir+"\"+"Maps_DSP73.ini"
+   $FileINI_DSP73_NEW           = $KxlDir+"\"+"Maps_DSP73_NEW.ini"
+   $FileINI_DSP73_NEW_22        = $KxlDir+"\"+"Maps_DSP73_NEW_22.ini"
+   ;--------------------------------------------------------------------------------------
+
+
+;--------------------------------------------------------------------------------------
+; Терминальные сервара Отделения Ульяновск
+;--------------------------------------------------------------------------------------
+$ArrayTerminal_REGION_MAPS_NEW =
+                  $CitrixServer_01,$CitrixServer_02,$CitrixServer_03,$CitrixServer_04,$CitrixServer_05,
+                  $CitrixServer_06,$CitrixServer_07,$CitrixServer_08,$CitrixServer_09
+
+$ArrayTerminal_DSP_MAPS_NEW =
+                  $CitrixServer_11,$CitrixServer_12,$CitrixServer_13
+
+;--------------------------------------------------------------------------------------
+; Терминальные сервара ВВГУ
+;--------------------------------------------------------------------------------------
+$ArrayTerminal_REGION_MAPS_NEW_22 =
+                  $CitrixServer22_01,$CitrixServer22_02,$CitrixServer22_03,$CitrixServer22_04,$CitrixServer22_05,
+                  $CitrixServer22_06,$CitrixServer22_07,$CitrixServer22_08,$CitrixServer22_09,$CitrixServer22_10,
+                  $CitrixServer22_11,$CitrixServer22_12,$CitrixServer22_13,$CitrixServer22_14,$CitrixServer22_15,
+                  $CitrixServer22_16,$CitrixServer22_17,$CitrixServer22_18,$CitrixServer22_19,$CitrixServer22_20,
+                  $CitrixServer22_21,$CitrixServer22_22,$CitrixServer22_23,$CitrixServer22_24,$CitrixServer22_25,
+                  $CitrixServer22_26,$CitrixServer22_27,$CitrixServer22_28,$CitrixServer22_29,$CitrixServer22_30,
+                  $CitrixServer22_31,$CitrixServer22_32,$CitrixServer22_33,$CitrixServer22_34,$CitrixServer22_35,
+                  $CitrixServer22_36,$CitrixServer22_37,$CitrixServer22_38,$CitrixServer22_39,$CitrixServer22_40,
+                  $CitrixServer22_41,$CitrixServer22_42,$CitrixServer22_43,$CitrixServer22_44,$CitrixServer22_45,
+                  $CitrixServer22_46,$CitrixServer22_47,$CitrixServer22_48,$CitrixServer22_49,$CitrixServer22_50,
+                  $CitrixServer22_60,$CitrixServer22_61
+
+$ArrayTerminal_DSP_MAPS_NEW_22 =
+                  $CitrixServerIOD22_01,$CitrixServerIOD22_02,$CitrixServerIOD22_03,$CitrixServerIOD22_04,$CitrixServerIOD22_05,
+                  $CitrixServerIOD22_06,$CitrixServerIOD22_07,$CitrixServerIOD22_08,$CitrixServerIOD22_09,$CitrixServerIOD22_10,
+                  $CitrixServerIOD22_11,$CitrixServerIOD22_12,$CitrixServerIOD22_13,$CitrixServerIOD22_14,$CitrixServerIOD22_15,
+                  $CitrixServerIOD22_16,$CitrixServerIOD22_17,$CitrixServerIOD22_18,$CitrixServerIOD22_19,$CitrixServerIOD22_20,
+                  $CitrixServerIOD22_21,$CitrixServerIOD22_22,$CitrixServerIOD22_23,$CitrixServerIOD22_24,$CitrixServerIOD22_25,
+                  $CitrixServerIOD22_26,$CitrixServerIOD22_27,$CitrixServerIOD22_28,$CitrixServerIOD22_29,$CitrixServerIOD22_30,
+                  $CitrixServerIOD22_31,$CitrixServerIOD22_32,$CitrixServerIOD22_33,$CitrixServerIOD22_34,$CitrixServerIOD22_35,
+                  $CitrixServerIOD22_36,$CitrixServerIOD22_37,$CitrixServerIOD22_38,$CitrixServerIOD22_39,$CitrixServerIOD22_40,
+                  $CitrixServerIOD22_41,$CitrixServerIOD22_42,$CitrixServerIOD22_43,$CitrixServerIOD22_44,$CitrixServerIOD22_45,
+                  $CitrixServerIOD22_46,$CitrixServerIOD22_47,$CitrixServerIOD22_48,$CitrixServerIOD22_49,$CitrixServerIOD22_50,
+                  $CitrixServerIOD22_60,$CitrixServerIOD22_61,$CitrixServerIOD22_62,$CitrixServerIOD22_63,$CitrixServerIOD22_64,
+                  $CitrixServerIOD22_65,
+                  $CitrixServer22TERMTST_66
+
+;-------------------------------------------------
+; REGION_MAPS_NEW
+;-------------------------------------------------
+function REGION_MAPS_NEW
+;begin
+   $REGION_MAPS_NEW = 0
+   for each $ItemTerminal in $ArrayTerminal_REGION_MAPS_NEW
+      if UCase(@WKSTA) = UCase($ItemTerminal)
+         $REGION_MAPS_NEW = 1
+      endif
+   next
+endfunction
+
+;-------------------------------------------------
+; REGION_MAPS_NEW_22
+;-------------------------------------------------
+function REGION_MAPS_NEW_22
+;begin
+   $REGION_MAPS_NEW_22 = 0
+   for each $ItemTerminal in $ArrayTerminal_REGION_MAPS_NEW_22
+      if UCase(@WKSTA) = UCase($ItemTerminal)
+         $REGION_MAPS_NEW_22 = 1
+      endif
+   next
+endfunction
+
+;-------------------------------------------------
+; DSP_MAPS_NEW
+;-------------------------------------------------
+function DSP_MAPS_NEW
+;begin
+   $DSP_MAPS_NEW = 0
+   for each $ItemTerminal in $ArrayTerminal_DSP_MAPS_NEW
+      if UCase(@WKSTA) = UCase($ItemTerminal)
+         $DSP_MAPS_NEW = 1
+      endif
+   next
+endfunction
+
+;-------------------------------------------------
+; DSP_MAPS_NEW_22
+;-------------------------------------------------
+function DSP_MAPS_NEW_22
+;begin
+   $DSP_MAPS_NEW_22 = 0
+   for each $ItemTerminal in $ArrayTerminal_DSP_MAPS_NEW_22
+      if UCase(@WKSTA) = UCase($ItemTerminal)
+         $DSP_MAPS_NEW_22 = 1
+      endif
+   next
+endfunction
+
+;begin
+   ;------------------------------------------------------
+   ; $LogDir, $Log, $LogFile
+   ;------------------------------------------------------
+   $Log = 30 
+   $LogDir = $LogPath_S73FS01+"\logon"
+   if @LDomain <> ""
+      $LogDir = $LogDir+"\"+@LDomain
+   endif
+   if not Exist($LogDir) MD $LogDir endif
+   $s = AddCharR("_",$USERID,15)
+   $LogFile = $s+"_"+UCase(@WKSTA)+".log" 
+   $LogFile = LogFileName($Log,$LogDir,$LogFile)
+
+   ;------------------------------------------------------
+   ;
+   ;------------------------------------------------------
+   $Key = "HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Services\lanmanserver\parameters"
+   $srvcomment = RegReadString ($Key, "srvcomment")
+   $DomainUser = @LDomain
+   $DomainPC   = @Domain
+   $PCUser     = %COMPUTERNAME%
+   if $PCUser = "" $PCUser = @Wksta endif
+
+   ;------------------------------------------------------
+   ;
+   ;------------------------------------------------------
+   LogAdd($Log,$LogFile,"I", "===========================================================")
+   LogAdd($Log,$LogFile,"I", "USERNAME:      "+Ucase ("%USERNAME%"))
+   LogAdd($Log,$LogFile,"I", "USERDOMAIN:    "+Ucase ("%USERDOMAIN%"))
+   LogAdd($Log,$LogFile,"I", "USERDNSDOMAIN: "+Ucase ("%USERDNSDOMAIN%"))
+   LogAdd($Log,$LogFile,"I", "COMPUTERNAME:  "+Ucase ("%COMPUTERNAME%"))
+   LogAdd($Log,$LogFile,"I", "COMPUTERDOMAIN:"+Ucase (@Domain))
+   LogAdd($Log,$LogFile,"I", "OS:            "+Ucase ("%OS%"))
+   LogAdd($Log,$LogFile,"I", "srvcomment:    "+$srvcomment)
+   LogAdd($Log,$LogFile,"I", "IP:            "+GetIP)
+
+   ;------------------------------------------------------
+   ;
+   ;------------------------------------------------------
+   $IPAddr = ExtractWord(1,GetIP,"/")
+   $R3 = ExtractWord(3,$IPAddr,".")
+   $DomainUser_01 = GET_DOMAIN_USER ($IPAddr)
+   LogAdd($Log,$LogFile,"I", "USERDOMAIN:    "+Ucase ($DomainUser_01))
+   LogAdd($Log,$LogFile,"I", "IPAddr:        "+$IPAddr)
+   LogAdd($Log,$LogFile,"I", "R3:            "+$R3)
+   LogAdd($Log,$LogFile,"I", "DomainPC:      "+$DomainPC)
+
+   ;-----------------------------------------------------------
+   ; Подключение сетевых дисков
+   ;-----------------------------------------------------------
+   select
+
+      ;case Ucase("%USERDOMAIN%") = "REGION"
+      case Ucase($DomainUser_01) = "REGION"
+
+         select
+            case $R3 = "13"
+               ;---------------------------------------------------
+               ; ЭТО терминал
+               ;---------------------------------------------------
+               if REGION_MAPS_NEW
+                  $TerminalUserAppDataDir = %USERPROFILE%+"\Application Data"
+                  MapDrives ($FileINI_REGION_RKC13_NEW)
+               else
+                  if REGION_MAPS_NEW_22
+                     ;---------------------------------------------------
+                     ; ЭТО терминал ВВГУ
+                     ;---------------------------------------------------
+                     MapDrives ($FileINI_REGION_RKC13_NEW_22)
+                  else
+                     MapDrives ($FileINI_REGION_RKC13)
+                  endif 
+               endif
+            case 1
+               ;---------------------------------------------------
+               ; ЭТО терминал
+               ;---------------------------------------------------
+               if REGION_MAPS_NEW
+                  $STD_NEW = CheckUser_Login_STD_NEW ($Path_TOOLS+"\"+$UsersNetwork, $DomainUser, $USERID)
+                  LogAdd($Log,$LogFile,"I", $DomainUser+"\"+$USERID+"="+$STD_NEW)
+                  ;---------------------------------------------------------
+                  if $STD_NEW = 1
+                     $TerminalUserAppDataDir = %USERPROFILE%+"\Application Data"
+                     MapDrives ($FileINI_REGION_NEW)
+                  else
+                     MapDrives ($FileINI_REGION)
+                  endif
+
+                  SetCITRIX_REGION()
+
+               else
+                  if REGION_MAPS_NEW_22
+                     ;---------------------------------------------------
+                     ; ЭТО терминал ВВГУ
+                     ;---------------------------------------------------
+                     MapDrives ($FileINI_REGION_NEW_22)
+                  else
+                     ;---------------------------------------------------
+                     ; ЭТО локальный ПК
+                     ;---------------------------------------------------
+                     $STD_NEW = CheckUser_Login_STD_NEW ($Path_TOOLS+"\"+$UsersNetwork, $DomainUser, $USERID)
+                     LogAdd($Log,$LogFile,"I", $DomainUser+"\"+$USERID+"="+$STD_NEW)
+                     ;---------------------------------------------------------
+                     if $STD_NEW = 1
+                        MapDrives ($FileINI_REGION_NEW)
+                     else
+                        MapDrives ($FileINI_REGION)
+                     endif
+                  endif
+               endif
+         endselect
+
+      ;case Ucase("%USERDOMAIN%") = "DSP73"
+      ;---------------------------------------------------
+      ; ЭТО REGION (DSPESK)
+      ;---------------------------------------------------
+      case Ucase($DomainUser_01) = "DSP73"
+
+         select
+            case $R3 = "13"
+               if $DomainPC = "DSP73"
+                  MapDrives ($FileINI_DSP73_RKC13)
+               else
+                  MapDrives ($FileINI_REGION_RKC13)
+               endif
+            case 1
+               if $DomainPC = "DSP73"
+                  ;---------------------------------------------------
+                  ; ЭТО DSP73
+                  ;---------------------------------------------------
+                  if DSP_MAPS_NEW
+                     ;---------------------------------------------------
+                     ; ЭТО терминал
+                     ;---------------------------------------------------
+                     $STD_NEW = CheckUser_Login_STD_NEW ($Path_TOOLS+"\"+$UsersNetwork, $DomainUser, $USERID)
+                     LogAdd($Log,$LogFile,"I", $DomainUser+"\"+$USERID+"="+$STD_NEW)
+                     ;---------------------------------------------------------
+                     if $STD_NEW = 1
+                        $TerminalUserAppDataDir = %USERPROFILE%+"\Application Data"
+                        MapDrives ($FileINI_DSP73_NEW)
+                     else
+                        MapDrives ($FileINI_DSP73)
+                     endif
+                  else
+                     if DSP_MAPS_NEW_22
+                        ;---------------------------------------------------
+                        ; ЭТО терминал ВВГУ
+                        ;---------------------------------------------------
+                        LogAdd($Log,$LogFile,"I", "ЭТО терминал ВВГУ IOD1")
+                        MapDrives ($FileINI_DSP73_NEW_22)
+                     else
+                        ;---------------------------------------------------
+                        ; ЭТО локальный ПК
+                        ;---------------------------------------------------
+                        $STD_NEW = CheckUser_Login_STD_NEW ($Path_TOOLS+"\"+$UsersNetwork, $DomainUser, $USERID)
+                        LogAdd($Log,$LogFile,"I", $DomainUser+"\"+$USERID+"="+$STD_NEW)
+                        ;---------------------------------------------------------
+                        if $STD_NEW = 1
+                           MapDrives ($FileINI_DSP73_NEW)
+                        else
+                           MapDrives ($FileINI_DSP73)
+                        endif
+                     endif
+                  endif
+               else
+                  ;---------------------------------------------------
+                  ; ЭТО REGION (DSPESK)
+                  ;---------------------------------------------------
+                  if DSP_MAPS_NEW
+                     ;---------------------------------------------------
+                     ; ЭТО терминал
+                     ;---------------------------------------------------
+                     $STD_NEW = CheckUser_Login_STD_NEW ($Path_TOOLS+"\"+$UsersNetwork, $DomainUser, $USERID)
+                     LogAdd($Log,$LogFile,"I", $DomainUser+"\"+$USERID+"="+$STD_NEW)
+                     $STD_NEW_ESK = CheckUser_Login_STD_NEW ($Path_TOOLS+"\"+$UsersNetwork, "DSPESK", $USERID)
+                     LogAdd($Log,$LogFile,"I", "DSPESK"+"\"+$USERID+"="+$STD_NEW_ESK)
+                     ;---------------------------------------------------------
+                     if $STD_NEW = 1
+                        ;$TerminalUserAppDataDir = "W:\Application Data"
+                        $TerminalUserAppDataDir = %USERPROFILE%+"\Application Data"
+                        MapDrives ($FileINI_DSP73_REGION_NEW)
+                     else
+                        MapDrives ($FileINI_DSP73_REGION)
+                     endif
+                  else
+                     if DSP_MAPS_NEW_22
+                        ;---------------------------------------------------
+                        ; ЭТО терминал ВВГУ
+                        ;---------------------------------------------------
+                        LogAdd($Log,$LogFile,"I", "ЭТО терминал ВВГУ IOD2")
+                        MapDrives ($FileINI_DSP73_REGION_NEW_22)
+                     else
+                        ;---------------------------------------------------
+                        ; ЭТО локальный ПК
+                        ;---------------------------------------------------
+                        LogAdd($Log,$LogFile,"I", "beg ЭТО локальный ПК")
+                        $STD_NEW = CheckUser_Login_STD_NEW ($Path_TOOLS+"\"+$UsersNetwork, $DomainUser, $USERID)
+                        LogAdd($Log,$LogFile,"I", $DomainUser+"\"+$USERID+"="+$STD_NEW)
+                        $STD_NEW_ESK = CheckUser_Login_STD_NEW ($Path_TOOLS+"\"+$UsersNetwork, "DSPESK", $USERID)
+                        LogAdd($Log,$LogFile,"I", "DSPESK"+"\"+$USERID+"="+$STD_NEW_ESK)
+                        LogAdd($Log,$LogFile,"I", "end ЭТО локальный ПК")
+                        ;---------------------------------------------------------
+                        if $STD_NEW = 1
+                           MapDrives ($FileINI_DSP73_REGION_NEW)
+                        else
+                           MapDrives ($FileINI_DSP73_REGION)
+                        endif
+                     endif
+                  endif
+               endif
+         endselect
+   endselect
+
+   ;-----------------------------------------------------------
+   ; Установка начальных настроек для Internet Explorer
+   ;-----------------------------------------------------------
+   SetIE
+   ;-----------------------------------------------------------
+   ; Пользовательские группы и список дисков
+   ;-----------------------------------------------------------
+   WriteGGU
+   ListDrives ($Log,$LogFile)
+   ;-----------------------------------------------------------
+
+   ;-----------------------------------------------------------
+   ; 
+   ;-----------------------------------------------------------
+   if REGION_MAPS_NEW_22 
+      LogAdd($Log,$LogFile,"I", "ЭТО терминал ВВГУ: "+UCase(@WKSTA))
+   else
+      if DSP_MAPS_NEW_22
+         LogAdd($Log,$LogFile,"I", "ЭТО терминал ВВГУ IOD: "+UCase(@WKSTA))
+      else
+
+   ;-----------------------------------------------------------
+   ; Установка начальных настроек для Internet Explorer
+   ;-----------------------------------------------------------
+   ;SetIE
+   ;-----------------------------------------------------------
+   ; Пользовательские группы и список дисков
+   ;-----------------------------------------------------------
+   ;WriteGGU
+   ;ListDrives ($Log,$LogFile)
+   ;-----------------------------------------------------------
+
+
+         select
+            ;-----------------------------------------------------------
+            ; Выполнение скрипта для S73APxx
+            ;-----------------------------------------------------------
+            case IsTerminalApplication = 1
+      
+               LogAdd($Log,$LogFile,"I", "TerminalUserAppDataDir:    "+$TerminalUserAppDataDir)
+               LogAdd($Log,$LogFile,"I", "Работа в терминальном режиме: "+UCase(@WKSTA))
+               if not Exist("w:\TEMP") MD w:\TEMP endif 
+      
+            ;-----------------------------------------------------------
+            ; Выполнение скрипта для локальных машин
+            ;-----------------------------------------------------------
+            case 1
+               ;-----------------------------------------------------------
+               ; 
+               ;-----------------------------------------------------------
+               LogonLog  ($LogPath+"\logon")
+               TitleInfoPC ()
+               WMIALL
+      
+               ;-----------------------------------------------------------
+               ; NoDriveTypeAutoRun
+               ;-----------------------------------------------------------
+               $Key = "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer"
+               RegWriteDWORD ($Key, "NoDriveTypeAutoRun", 255)
+      
+               ;-----------------------------------------------------------
+               ; STD
+               ;-----------------------------------------------------------
+               $SourcePN = "K:\STD\APP\ORIG"
+               $DestPN = %USERPROFILE%+"\Application Data\ICAClient"
+               LogAdd($Log,$LogFile,"I", $SourcePN+"\pn.ini"+" => "+$DestPN)
+               BacFile ($SourcePN, $DestPN, "pn.ini", False)
+      
+               ;-----------------------------------------------------------
+               ; Создание ярлыков для локальных машин
+               ;-----------------------------------------------------------
+               ;CreateLinks
+               ;-----------------------------------------------------------
+         endselect
+      endif
+   endif
+
+   LogAdd($Log,$LogFile,"I", "Конец login.kix")
+;end

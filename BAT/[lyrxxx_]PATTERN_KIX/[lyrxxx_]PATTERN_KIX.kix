@@ -1,0 +1,122 @@
+;===============================================================
+; [lyrxxx_]PATTERN_KIX.kix
+;===============================================================
+
+    BREAK ON
+
+    ; -------------------------------------------------------
+    ; 0.DEFAULT
+    ;-------------------------------------------------------
+    ; DATETIME_STAMP
+    $DATETIME_STAMP=%DATETIME_STAMP%
+    ; Формат имени файлф журнала: FILENAME,DT,...
+    $LOG_FILENAME_FORMAT=%LOG_FILENAME_FORMAT%
+
+    ;-------------------------------------------------------
+    ; 1.PROJECTS
+    ;-------------------------------------------------------
+    $PROJECTS=%PROJECTS%
+    $CURRENT_SYSTEM=%CURRENT_SYSTEM%
+    $UNAME=%UNAME%
+    $USERNAME=%USERNAME%
+    $PROJECTS_LYR_DIR=%PROJECTS_LYR_DIR%
+    $PROJECTS_DIR=%PROJECTS_DIR%
+    ; Файл скрипта: каталог+имя+расширение
+    $SCRIPT_FULLFILENAME=%SCRIPT_FULLFILENAME%
+    ; Файл скрипта: имя+расширение
+    $SCRIPT_BASEFILENAME=%SCRIPT_BASEFILENAME%
+    ; Файл скрипта: имя
+    $SCRIPT_FILENAME=%SCRIPT_FILENAME%
+    ; Каталог BAT_DIR: каталог
+    $BAT_DIR=%BAT_DIR%
+
+    ;-------------------------------------------------------
+    ; 2.Каталог журналов
+    ;-------------------------------------------------------
+    ; Каталог журнала: каталог
+    $LOG_DIR=%LOG_DIR%
+    ; Файл журнала: имя+расширение
+    $LOG_BASEFILENAME=%LOG_BASEFILENAME%
+    ; Файл журнала: каталог+имя+расширение
+    $LOG_FULLFILENAME=%LOG_FULLFILENAME%
+    ; Файл журнала: имя
+    $LOG_FILENAME=%LOG_FILENAME%
+    ; Параметры журнала
+    $LOG_OPT=%LOG_OPT%
+    ; Параметры журнала LOG_OPT1
+    $LOG_OPT1=%LOG_OPT1%
+    ; Параметры журнала LOG_OPT2
+    $LOG_OPT2=%LOG_OPT2%
+
+    ;-------------------------------------------------------
+    ; 3.LIB_KIX - БИБЛИОТЕКА LYR
+    ;-------------------------------------------------------
+    ; Каталог библиотеки KIX: каталог
+    $LIB_KIX=%LIB_KIX%
+    if not $LIB_KIX
+        "Каталог библиотеки KIX [LIB_KIX] не установлен"
+        ?
+        exit 1
+    else
+        if not exist ($LIB_KIX)
+            "Каталог библиотеки KIX [LIB_KIX] не существует"
+            ?
+            exit 1
+        endif
+    endif
+
+    ;-------------------------------------------------------
+    ; 4.KIX_DIR
+    ;-------------------------------------------------------
+    ; Каталог KIX_DIR: каталог
+    $KIX_DIR=%KIX_DIR%
+
+    ;-------------------------------------------------------
+    ; 5.APP_KIX
+    ;-------------------------------------------------------
+    ; Скрипт APP_KIX: имя+расширение
+    $APP_KIX=%APP_KIX%
+
+    ;============================================================
+    ; Uses
+    ;============================================================
+    Call $LIB_KIX+"\LUConst.kxl"
+    Call $LIB_KIX+"\LUFile.kxl"
+    Call $LIB_KIX+"\LUDateTime.kxl"
+    Call $LIB_KIX+"\LUSupport.kxl"
+    Call $LIB_KIX+"\LUStrings.kxl"
+    Call $LIB_KIX+"\LUArray.kxl"
+    Call $LIB_KIX+"\LUNet.kxl"
+    Call $LIB_KIX+"\LUIniFiles.kxl"
+    ;============================================================
+
+;begin
+    if not $Log $Log = 30 endif
+    $LogDir = "."
+    $LogDir = $LOG_DIR
+    $LogFile = $SCRIPT_FILENAME+".log"
+    $LogFile = LogFileName ($Log, $LogDir, $LogFile)
+
+    ;$LogFile = "D:\PROJECTS_LYR\LOGS\lyrgit_config.log"
+    ;$LogFile = $LOG_FULLFILENAME
+
+    ;-------------------------------------------------------------------
+    ; StartLogFile
+    ; -------------------------------------------------------------------
+    ; StartLogFile "$0" "" ""
+    ; -------------------------------------------------------------------
+    LogAdd ($Log, $LogFile, "I", "StartLogFile...")
+    LogAdd ($Log, $LogFile, "I", "Журнал="+$LogFile)
+
+    ;Call $KIX_DIR+"\GITTools.kxl"
+    ;GIT
+
+    ; -------------------------------------------------------------------
+    ; StopLogFile
+    ; -------------------------------------------------------------------
+    ; StopLogFile
+    ; -------------------------------------------------------------------
+    LogAdd ($Log, $LogFile, "I", "StopLogFile...")
+
+;end
+;===============================================================

@@ -1,0 +1,5 @@
+call arjd.bat "TOOLS_KIX"
+call arjd.bat "TOOLS_PY"
+call arjd.bat "TOOLS_VBL"
+call arjd.bat "TOOLS_WMI"
+call arjd.bat "TOOLS_WSH"

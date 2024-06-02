@@ -1,0 +1,277 @@
+;=======================================================================================
+; LUisql.kxl
+;=======================================================================================
+;
+;function RunISQL ($Login, optional $Password, $Server, $DBName, 
+;                  optional $Query, 
+;                  optional $QueryFile, 
+;                  optional $Headers, 
+;                  optional $Separator,
+;                  optional $Output
+;                  )
+;function DB_BACKUP ($DataDir, $BackupDataDir, $DataFile, $DataLogFile, optional $NoChangeDir)
+;function DB_RESTORE ($DataDir, $BackupDataDir, $DataFile, $DataLogFile)
+;function DB_CLOSE ($SQLServer, $Database, $User, $Password)
+;function DB_OPEN ($SQLServer, $Database, $User, $Password, $DataDir, $DataFile, $DataLogFile)
+;function DB_EXIST ($SQLServer, $Database, $User, $Password)
+;function DB_LOGIN ($SQLServer, $Database, $User, $Password)
+;function ChangePassword ($SQLServer, $User, $Password, $Login, $NewPassword)
+;=======================================================================================
+
+   Global $ResFile
+   $SQLError = ""
+
+;-------------------------------------------------
+; Main
+;-------------------------------------------------
+;begin
+   $isql = "isqlw.exe"
+   $isql = "isql.exe"
+   $output_file = %TEMP%+"\isql.log"
+   $ResFile = ""
+;end
+
+;-------------------------------------------------
+; RunISQL
+;-------------------------------------------------
+function RunISQL ($Login, optional $Password, $Server, $DBName, 
+                  optional $Query, 
+                  optional $QueryFile, 
+                  optional $Headers, 
+                  optional $Separator,
+                  optional $Output,
+				  optional $HidePassword ; пароль попадает в лог, заменим его строчкой ****. apsfv
+                  )
+;begin
+   select
+      case UCase($isql) = UCase("isql.exe")
+         $Program = $isql+" -b -w 1024 -x 40 -n"
+         if $Headers >= 0
+            $Program = $Program+" -h "+$Headers
+         else
+            $Program = $Program+" -h-1"
+         endif
+         if $Separator
+            $Program = $Program+" -s "+$Separator
+         endif
+         if $Query
+            $Program = $Program+' -Q "'+$Query+'"'
+         endif
+      case UCase($isql) = UCase("isqlw.exe")
+         $Program = $isql
+   endselect
+   if $QueryFile
+      $Program = $Program+" -i "+$QueryFile
+
+      LogAddFile($Log, $LogFile, "I", $QueryFile)
+
+   endif
+   $Program = $Program+" -U "+$Login
+   if $Password
+      $Program = $Program+" -P "+$Password
+   endif   
+   $Program = $Program+" -S "+$Server
+   $Program = $Program+" -d "+$DBName
+
+   if $Output
+      $Program = $Program+" -o "+$output
+      $ResFile = $output
+   else
+      $Program = $Program+" -o "+$output_file
+      $ResFile = $output_file
+   endif
+   Del $ResFile
+
+            $Program = '%comspec% /c ' + $Program + ' >> "'+$LogFile + '"'
+
+   if $Password and $HidePassword
+	   $Program4Log = Replace($Program, "-P " + $Password, "-P ****", 1) 
+	   LogAdd($Log, $LogFile, "I", $Program4Log)
+   else
+	   LogAdd($Log, $LogFile, "I", $Program)
+   endif
+
+   Shell $Program
+   $SQLError = @ERROR
+   $RUNISQL = $SQLError
+   LogAdd($Log, $LogFile, "I", $SQLError)
+
+   ; Cat ($ResFile, "w+/n")
+
+   LogAddFile($Log, $LogFile, "I", $ResFile)
+
+EndFunction
+
+;-------------------------------------------------
+; DB_BACKUP ($DataDir, $BackupDataDir, $DataFile, $DataLogFile)
+;-------------------------------------------------
+function DB_BACKUP ($DataDir, $BackupDataDir, $DataFile, $DataLogFile)
+;begin
+   $DB_BACKUP = 0
+   LogAdd($Log, $LogFile, "P", "DB_BACKUP")
+   if not EXIST($BackupDataDir)
+      MD $BackupDataDir
+   endif
+   LogAdd($Log, $LogFile, "P", $DataFile+" ...")
+   Copy $DataDir+"\"+$DataFile $BackupDataDir
+   If @ERROR
+    LogAdd($Log, $LogFile, "P", @SERROR)
+   EndIf
+   $DB_BACKUP = $DB_BACKUP + @ERROR
+   LogAdd($Log, $LogFile, "P", $DataLogFile+" ...")
+   Copy $DataDir+"\"+$DataLogFile $BackupDataDir
+   If @ERROR
+    LogAdd($Log, $LogFile, "P", @SERROR)
+   EndIf
+   $DB_BACKUP = $DB_BACKUP + @ERROR
+endfunction
+
+;-------------------------------------------------
+; DB_RESTORE ($DataDir, $BackupDataDir, $DataFile, $DataLogFile)
+;-------------------------------------------------
+function DB_RESTORE ($DataDir, $BackupDataDir, $DataFile, $DataLogFile)
+;begin
+   $DB_RESTORE = 0
+   LogAdd($Log, $LogFile, "P", "DB_RESTORE")
+   LogAdd($Log, $LogFile, "P", $DataFile+" ...")
+   Copy $BackupDataDir+"\"+$DataFile $DataDir
+   $DB_RESTORE =$DB_RESTORE + @ERROR
+   LogAdd($Log, $LogFile, "P", $DataLogFile+" ...")
+   Copy $BackupDataDir+"\"+$DataLogFile $DataDir
+   $DB_RESTORE =$DB_RESTORE + @ERROR
+endfunction
+
+;-------------------------------------------------
+; DB_CLOSE ($SQLServer, $Database, $User, $Password, $HidePassword)
+;-------------------------------------------------
+function DB_CLOSE ($SQLServer, $Database, $User, $Password, optional $HidePassword)
+;begin
+   $DB_CLOSE = 0
+   LogAdd($Log, $LogFile, "P", "DB_CLOSE ...")
+   if $HidePassword 
+	   LogAdd($Log, $LogFile, "P", $SQLServer+"_"+$Database+"_"+$User+"_"+"****")
+   else
+	   LogAdd($Log, $LogFile, "P", $SQLServer+"_"+$Database+"_"+$User+"_"+$Password)
+   endif
+   $QueryFile = %TEMP%+"\query.sql" 
+   ;--------------------------------------------------------------
+   ; defaultdb = "master"
+   ;--------------------------------------------------------------
+   Del $QueryFile
+   $Q = "EXEC sp_defaultdb "+"'"+$User+"'"+", "+"'"+"master"+"'"
+   WriteStr($QueryFile, $Q)
+   Cat ($QueryFile, "w+/n")
+   $Res = RunISQL($User, $Password, $SQLServer, "master", , $QueryFile, , , , $HidePassword)
+   $DB_CLOSE = $Res
+   if $Res
+      LogAdd($Log, $LogFile, "P", "Error = "+$Res)
+   endif
+   ;--------------------------------------------------------------
+   ; detach_db $Database
+   ;--------------------------------------------------------------
+   Del $QueryFile
+   $Q = "EXEC sp_detach_db "+"'"+$Database+"'"
+   WriteStr($QueryFile, $Q)
+   Cat ($QueryFile, "w+/n")
+   $Res = RunISQL($User, $Password, $SQLServer, "master", , $QueryFile, , , , $HidePassword)
+   $DB_CLOSE = $DB_CLOSE + $Res
+   if $Res
+      LogAdd($Log, $LogFile, "P", "Error = "+$Res)
+   endif
+   ;--------------------------------------------------------------
+   Del $QueryFile
+endfunction
+
+;-------------------------------------------------
+; DB_OPEN ($SQLServer, $Database, $User, $Password, $DataDir, $DataFile, $DataLogFile, $HidePassword)
+;-------------------------------------------------
+function DB_OPEN ($SQLServer, $Database, $User, $Password, $DataDir, $DataFile, $DataLogFile, optional $HidePassword)
+;begin
+   $DB_OPEN = 0
+   LogAdd($Log, $LogFile, "P", "DB_OPEN ...", "w+/n")
+   if $HidePassword 
+	   LogAdd($Log, $LogFile, "P", $SQLServer+"_"+$Database+"_"+$User+"_"+"****")
+   else
+	   LogAdd($Log, $LogFile, "P", $SQLServer+"_"+$Database+"_"+$User+"_"+$Password)
+   endif
+   $QueryFile = %TEMP%+"\query.sql" 
+   ;--------------------------------------------------------------
+   ; attach_db $Database
+   ;--------------------------------------------------------------
+   Del $QueryFile
+   $Q = "EXEC sp_attach_db "+"'"+$Database+"'"+", "+
+                             "'"+$DataDir+"\"+$DataFile+"'"+", "+
+                             "'"+$DataDir+"\"+$DataLogFile+"'"
+   WriteStr($QueryFile, $Q)
+   Cat ($QueryFile, "w+/n")
+   $Res = RunISQL($User, $Password, $SQLServer, "master", , $QueryFile, , , ,$HidePassword)
+   $DB_OPEN = $DB_OPEN + $Res
+   if $Res
+      LogAdd($Log, $LogFile, "P", "Error = "+$Res)
+   endif
+   ;--------------------------------------------------------------
+   ; defaultdb = $Database
+   ;--------------------------------------------------------------
+   Del $QueryFile
+   $Q = "EXEC sp_defaultdb "+"'"+$User+"'"+", "+"'"+$Database+"'"
+   WriteStr($QueryFile, $Q)
+   Cat ($QueryFile, "w+/n")
+   $Res = RunISQL($User, $Password, $SQLServer, "master", , $QueryFile, , , , $HidePassword)
+   $DB_OPEN = $DB_OPEN + $Res
+   if $Res
+      LogAdd($Log, $LogFile, "P", "Error = "+$Res)
+   endif
+   ;--------------------------------------------------------------
+   Del $QueryFile
+endfunction
+
+;-------------------------------------------------
+; DB_EXIST ($SQLServer, $Database, $User, $Password)
+;-------------------------------------------------
+function DB_EXIST ($SQLServer, $Database, $User, $Password)
+;begin
+   LogAdd($Log, $LogFile, "P", "DB_EXIST ...")
+   LogAdd($Log, $LogFile, "P", $SQLServer+"_"+$Database+"_"+$User+"_"+$Password)
+   $Q = "EXIT(select Count(*) from dbo.sysdatabases where name ="+"'"+$Database+"'"+")"
+   $Res = RunISQL($User, $Password, $SQLServer, "master", $Q, , , )
+   if $Res
+      LogAdd($Log, $LogFile, "P", $Database+" exist")
+   else
+      LogAdd($Log, $LogFile, "P", $Database+" not exist")
+   endif
+   $DB_EXIST = $Res
+endfunction
+
+;-------------------------------------------------
+; DB_LOGIN ($SQLServer, $Database, $User, $Password)
+;-------------------------------------------------
+function DB_LOGIN ($SQLServer, $Database, $User, $Password)
+;begin
+   LogAdd($Log, $LogFile, "P", "DB_LOGIN ...")
+   LogAdd($Log, $LogFile, "P", $SQLServer+"_"+$Database+"_"+$User+"_"+$Password)
+   $Q = "select 0"
+   $Res = RunISQL($User, $Password, $SQLServer, $Database, $Q, , , )
+   if $Res
+      LogAdd($Log, $LogFile, "P", "Error = "+$Res)
+   endif
+   $DB_LOGIN = $Res
+endfunction
+
+;-------------------------------------------------
+; 
+;-------------------------------------------------
+function ChangePassword ($SQLServer, $User, $Password, $Login, $NewPassword)
+;begin
+   $QueryFile = %TEMP%+"\query.sql" 
+   ;--------------------------------------------------------------
+   ; defaultdb = "master"
+   ;--------------------------------------------------------------
+   Del $QueryFile
+   $Q = "EXEC sp_password "+"NULL, "+"'"+$NewPassword+"', "+"'"+$Login+"'"
+   WriteStr($QueryFile, $Q)
+   Cat ($QueryFile, "w+/n")
+   $Res = RunISQL($User, $Password, $SQLServer, "master", , $QueryFile, , )
+   if $Res
+      LogAdd($Log, $LogFile, "P", "Error = "+$Res)
+   endif
+endfunction

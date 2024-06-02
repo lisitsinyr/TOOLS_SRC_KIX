@@ -1,0 +1,97 @@
+;--------------------------------------------------------------------------------
+; Print.kxl
+;--------------------------------------------------------------------------------
+; PrintEx($FileName,$Port)
+; ShellFile($FileName,$Arguments,$Verb,$Show)
+; PrintShell($FileName,$PrinterName,$Verb,$Port)
+;--------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------
+; PrintEx($FileName,$Port)
+;--------------------------------------------------------------------------------
+; »значальное название Print, был конфликт имен, модуль не подключалс€. apsfv
+FUNCTION PrintEx($FileName,$Port)
+   DIM $n, $Handle
+;begin
+   ; Open FileName
+   $Handle = FreeFileHandle()
+   if Open($Handle, $FileName, 2) = 0
+      ; Print FileName
+      $RC=RedirectOutput($Port)
+      $s = ReadLine($Handle)
+      WHILE @ERROR = 0
+         ? $s
+         $s = ReadLine($Handle)
+      LOOP
+      $RC=Close ($Handle)
+      $RC=RedirectOutput("")
+   else
+      Exit (1)
+   endif
+ENDFUNCTION
+
+;--------------------------------------------------------------------------------
+; ShellFile($FileName,$Arguments,$Verb,$Show)
+;--------------------------------------------------------------------------------
+; 
+; $Arguments
+;    ДЂп printto нвЃ ѓа®≠в•а
+;    ДЂп print   ѓ•з†вм ≠† default printer
+;
+; $Verb        Description 
+; ------------ ------------------------------------------------------------------
+; edit         Launches an editor and opens the document for editing. 
+; find         Initiates a search starting from the specified directory. 
+; open         Launches an application. 
+;              If this file is not an executable file, its associated application is launched. 
+; print        Prints the document file. 
+; printto      Prints the document file. 
+; properties   Displays the object's properties. 
+;
+; $Show
+; -------------------------------------------
+; 0            Open the application with a hidden window. 
+; 1            Open the application with a normal window. 
+;              If the window is minimized or maximized, the system restores it to its original size and position. 
+; 2            Open the application with a minimized window. 
+; 3            Open the application with a maximized window. 
+; 4            Open the application with its window at its most recent size and position. The active window remains active. 
+; 5            Open the application with its window at its current size and position. 
+; 7            Open the application with a minimized window. The active window remains active. 
+; 10           Open the application with its window in the default state specified by the application. 
+;--------------------------------------------------------------------------------
+function ShellFile($FileName,$Arguments,$Verb,$Show)
+   dim $ShellObj,$FilePath
+;begin
+   $FilePath=split($FileName,"\")
+   if ubound($FilePath) 
+      $FileName=$FilePath[ubound($FilePath)] 
+   endif
+   $FilePath[ubound($FilePath)] = ""
+   $FilePath=join($FilePath,"\")
+   $ShellObj=createobject("shell.application")
+   $ShellObj.ShellExecute($FileName, '"$Arguments"', $FilePath, $Verb, $Show)
+   Sleep 2
+   exit @error
+endfunction
+
+;--------------------------------------------------------------------------------
+; PrintShell($FileName,$PrinterName,$Verb,$Port)
+;--------------------------------------------------------------------------------
+function PrintShell($FileName,$PrinterName,$Verb,$Port)
+   if $Verb = "printerd"
+      ;? $FileName
+      ;? $PrinterName
+      ;? $Verb
+      ;get $x
+      Shell 'PrintShell.exe -f "$FileName" -printerd "$PrinterName"'
+   else
+   if $Verb = "printer"
+      Shell 'PrintShell.exe -f "$FileName" -printer "$PrinterName"'
+   else
+   if $Verb = "port"
+      Shell 'PrintShell.exe -f "$FileName" -port $Port'
+   endif
+   endif
+   endif
+endfunction

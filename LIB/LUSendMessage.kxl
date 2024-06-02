@@ -1,0 +1,123 @@
+;--------------------------------------------------------------------
+; LUSendMessage.kxl
+;--------------------------------------------------------------------
+
+   $Program_SMTP = "SendPower.exe"
+   $Program_Mail = $Program_SMTP
+
+;-------------------------------------------------
+; FuncGetSMTP
+;-------------------------------------------------
+function FuncGetSMTP ($FIO)
+;begin
+   $TO_SMTP = ReadString ($INIFile, "SMTP", $FIO, "")
+   if $TO_SMTP <> ""
+      $FuncGetSMTP = $TO_SMTP
+   else
+      $FuncGetSMTP = $TO
+      $FuncGetSMTP = ""
+   endif
+EndFunction
+
+;---------------------------------------------------------------------
+; Create_Message_TO
+;---------------------------------------------------------------------
+function Create_Message_TO ($TO)
+;begin
+   $Create_Message_TO = ""
+   $FullFileNameTO = %TEMP%+"\TO.txt"
+   DEL $FullFileNameTO
+   $Handle_TO = FreeFileHandle
+   if Open ($Handle_TO, $FullFileNameTO, 1+4) = 0
+      ;------------------------------------------------------
+      ; Добавить адреса из строки $TO
+      ;------------------------------------------------------
+      $Create_Message_TO = 1
+      $n = WordCount($TO, ";")
+      if $n > 1 
+         for $i = 1 TO $n
+            $TOi = ExtractWord($i, $TO, ";")
+            if $TOi
+               $TO_SMTPi = FuncGetSMTP ($TOi)
+               if $TO_SMTPi <> ""
+                  $Result = WriteLine ($Handle_TO, $TO_SMTPi+@CRLF)
+
+                  LogAdd($Log, $LogFile, "I", "   "+$TOi+"("+$TO_SMTPi+")") 
+                  LogAdd($FPSLog, $FPSLogFile, "I", "   "+$TOi+"("+$TO_SMTPi+")") 
+
+               endif
+            endif
+         next
+      else
+         $TOi = $TO
+         if $TOi
+            $TO_SMTPi = FuncGetSMTP ($TOi)  
+            if $TO_SMTPi <> ""
+               $Result = WriteLine ($Handle_TO, $TO_SMTPi+@CRLF)
+
+               LogAdd($Log, $LogFile, "I", "   "+$TOi+"("+$TO_SMTPi+")") 
+               LogAdd($FPSLog, $FPSLogFile, "I", "   "+$TOi+"("+$TO_SMTPi+")") 
+
+            endif
+         endif
+      endif
+      $Result = Close ($Handle_TO)
+
+      $Create_Message_TO = $FullFileNameTO
+
+   endif
+EndFunction
+
+;---------------------------------------------------------
+; Create_Message_SUB_INFO
+;---------------------------------------------------------
+function Create_Message_SUB_INFO ($Sub)
+;begin
+   $Create_Message_SUB_INFO = ""
+
+   $FullFileNameSUB = %TEMP%+"\SUB.txt"
+   del $FullFileNameSUB
+   $Handle = FreeFileHandle
+   if Open ($Handle, $FullFileNameSUB, 1+4) = 0
+      $Result = WriteLine ($Handle, $SUB)
+      $Result = Close ($Handle)
+   endif
+
+   ;LogAdd($Log, $LogFile, "I", "SUB: "+$SUB) 
+   ;LogAdd($FPSLog, $FPSLogFile, "I", "SUB: "+$SUB) 
+
+   $Create_Message_SUB_INFO = $FullFileNameSUB
+EndFunction
+
+;---------------------------------------------------------
+; Send_Message
+;---------------------------------------------------------
+function Send_Message($FullFileNameTO, optional $FullFileNameSUB, optional $FullFileNameBODY, optional $FileAttach)
+;begin
+   LogAdd($Log, $LogFile, "I", "   Посылка сообщения")
+   LogAdd($FPSLog, $FPSLogFile, "I", "   Посылка сообщения")
+
+   $Program = $Program_Mail + ' /to "'+$FullFileNameTO+'"'+' /s "'+$FullFileNameSUB+'"'
+
+   if EXIST($FullFileNameBODY)
+      $Program = $Program + ' /t "'+$FullFileNameBODY+'"'
+   endif
+
+   if EXIST($FileAttach)
+      $Program = $Program + ' /f "'+$FileAttach+'"'
+   endif
+
+   ;LogAdd($Log, $LogFile, "I", @CurDir+" "+$Program) 
+   ;LogAdd($FPSLog, $FPSLogFile, "I", $Program) 
+   ;LogAddFile ($FPSLog, $FPSLogFile, "I", $FullFileNameSUB)
+   ;LogAddFile ($FPSLog, $FPSLogFile, "I", $FullFileNameCRC)
+
+   "   " "-----------------------------------------------" ?
+   "   " $Program ?
+   Shell $Program
+   $Error = @error
+   "   " "Error = " $Error ?
+   "   " "-----------------------------------------------" ?
+   LogAdd($FPSLog, $FPSLogFile, "I", "Error = "+$Error) 
+
+EndFunction

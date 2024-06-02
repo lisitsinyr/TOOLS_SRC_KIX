@@ -1,0 +1,70 @@
+if $LogFile = 0
+   $LogFile = %TEMP%+"\info.log"
+endif
+
+del ($LogFile)
+$Result=RedirectOutput($LogFile)
+
+? "Address of the network adapter                                 Address      " @Address      
+? "Build number of the operating system                           Build        " @Build        
+? "Returns the current console color setting                      Color        " @Color        
+? "User comment (Description field in User Manager)               Comment      " @Comment      
+? "Name of the CPU                                                CPU          " @CPU          
+? "Returns a carriage-return line-feed combination                CRLF         " @CRLF         
+? "CSD information                                                CSD          " @CSD          
+? "Current directory                                              CurDir       " @CurDir       
+? "Date (in the format YYYY/MM/DD)                                Date         " @Date         
+? "Day of the week (Monday, Tuesday, etc.)                        Day          " @Day          
+? "Domain or workgroup the computer belongs to                    Domain       " @Domain       
+? "Version of Windows NT                                          DOS          " @DOS          
+? "Return code of the most recent command or function.            Error        " @Error        
+? "Full name of current user                                      FullName     " @FullName     
+? "Short name of the directory part of home directory             HomeDir      " @HomeDir      
+? "* Drive letter of drive containing home directory              HomeDrive    " @HomeDrive    
+? "Server and share name part of home directory                   HomeShr      " @HomeShr      
+? "Fully qualified TCP/IP host name                               HostName     " @HostName     
+? "Operating system: 1 = Windows NT; 2 = Windows 9x               InWin        " @InWin        
+? "TCP/IP address (possible values for X are 0 - 3).              IPaddressX   " @IPaddressX   
+? "Version of KiXtart                                             KiX          " @KiX          
+? "Directory where network software resides                       LanRoot      " @LanRoot      
+? "* Logon domain                                                 LDomain      " @LDomain      
+? "Drive that is redirected to \\logonserver\NETLOGON             LDrive       " @LDrive       
+? "Version of network software                                    LM           " @LM           
+? "If 1, indicates that KiXtart assumes to be running             LogonMode    " @LogonMode    
+? "Long name of the directory part of home directory              LongHomeDir  " @LongHomeDir  
+? "Logon server                                                   LServer      " @LServer      
+? "Maximum password age                                           MaxPWAge     " @MaxPWAge     
+? "Day of the month (1-31)                                        MDayNo       " @MDayNo       
+? "Approximation of the CPU speed (not Windows 9x)                MHz          " @MHz          
+? "Month number, beginning with January (1-12)                    MonthNo      " @MonthNo      
+? "Name of the month                                              Month        " @Month        
+? "Milliseconds part of the current time                          MSecs        " @MSecs        
+? "Process ID of KiXtart (wkix32.exe or kix32.exe)                PID          " @PID          
+? "* Current user's primary group                                 PrimaryGroup " @PrimaryGroup 
+? "User's privilege level (GUEST, USER, ADMIN)                    Priv         " @Priv         
+? "OS Suite.                                                      ProductSuite " @ProductSuite 
+? "OS type.                                                       ProductType  " @ProductType  
+? "Password age                                                   PWAge        " @PWAge        
+? "Number of active Remote Access Service (RAS) connections       RAS          " @RAS          
+? "Returns command-specific information                           Result       " @Result       
+? "* KXRPC server used for the current session                    RServer      " @RServer      
+? "Directory of current script                                    ScriptDir    " @ScriptDir    
+? "Indicates the version of the KiXtart executable                ScriptExe    " @ScriptExe    
+? "Name of the current script                                     ScriptName   " @ScriptName   
+? "Error text corresponding with  ERROR                           SError       " @SError       
+? "*  Current user's Windows NT Security Identifier (SID)         SID          " @SID          
+? "** Name of the site in which the system resides                Site         " @Site         
+? "Directory from which KiXtart was started                       StartDir     " @StartDir     
+? "Full English name of the language of the operating system      SysLang      " @SysLang      
+? "Number of milliseconds elapsed since computer was last booted. Ticks        " @Ticks        
+? "Current time (in the format HH:MM:SS)                          Time         " @Time         
+? "Current user's Windows NT user ID                              UserID       " @UserID       
+? "Full English name of the language selected by the current user UserLang     " @UserLang     
+? "Days since Sunday (1 - 7)                                      WDayNo       " @WDayNo       
+? "Computer name                                                  Wksta        " @Wksta        
+? "Current user   Windows user ID                                 WUserID      " @WUserID      
+? "Days since January 1 (1 - 365)                                 YDayNo       " @YDayNo       
+? "Current year                                                   Year         " @Year         
+
+$Result=RedirectOutput("")
+

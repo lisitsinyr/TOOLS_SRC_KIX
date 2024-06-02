@@ -1,0 +1,67 @@
+;----------------------------------------------------------------------------
+; LUOutlook.kxl
+;----------------------------------------------------------------------------
+; sendmail($Subject, $Body, $Rec)
+;----------------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------
+; sendmail($Subject, $Body, $Rec)
+;--------------------------------------------------------------------------------
+; Sendmail() - Sends a Email 
+;Function Sendmail()
+;
+;Author Michael Szekely
+;
+;Action: Sends a little administrative Email
+;
+;Syntax Sendmail("Subjectline", "Bodytext", "Reciepient1;Recipient2")
+;
+;
+;The reciepients can be separated by Semikolon
+;
+;Important!!! When you add a recipient like "user.name@acme.com" kix has problems 
+; with the '@' char. you can replace it with the ascii code 64 like following line
+;
+;    "user.name"+chr(64)+"acme.com"
+;
+;
+; 
+;Dependencies: Outlook 2000 or new must be installed
+; 
+;Example:
+;
+;          $msgSubject="This is an administrative test mail"
+;          $msgBody="This message can be deleted"
+;          $msgRecip="user.name"+chr(64)+"acme.com"
+;   sendmail($msgSubject, $msgBody, $msgRecip)
+;
+;
+;--------------------------------------------------------------------------------
+function sendmail($Subject, $Body, $Rec)
+   Dim $objOutlook
+   Dim $NewMessage
+   Dim $Recip
+;begin
+   ;Create Outlook Object
+   $objOutlook=CreateObject("Outlook.Application")
+
+   ;Create NewMessage Object
+   $NewMessage=$objOutlook.CreateItem(0)
+
+   ;Set Mail Subject
+   $NewMessage.Subject=$Subject
+
+   ;Set Mail Body
+   $NewMessage.Body=$Body
+
+   ;Add Recipients
+   $Recip=$NewMessage.Recipients.add($rec)
+
+   ;If Outlook cannot resolve the recipient, the message will be displayed
+   if not $Recip.resolve
+      $NewMessage.Display
+   endif
+
+   ;Send Message
+   $NewMessage.send
+endfunction

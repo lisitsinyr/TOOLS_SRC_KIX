@@ -1,0 +1,79 @@
+;-------------------------------------------------
+; Run_CHECKAPP
+;-------------------------------------------------
+; (CRC files for $Name in $Path $FullFileNameCRCTemp)
+;-------------------------------------------------
+function Run_CHECKAPP ($Name, $Path)
+;begin
+   ;----------------------------------------------------------------
+   $FileNameCFG_CHECK          = "check.cfg"
+   $FullFileNameCFG_CHECK      = %TEMP%+"\"+$FileNameCFG_CHECK
+   ;----------------------------------------------------------------
+   $FileNameCRC_CHECK          = "check.vrf"
+   $FullFileNameCRC_CHECK      = $Path+"\"+$FileNameCRC_CHECK
+   ;----------------------------------------------------------------
+   $FileNameAPP_CHECK          = "files.app"
+   $FullFileNameAPP_CHECK      = $Path+"\"+$FileNameAPP_CHECK
+   ;----------------------------------------------------------------
+   DEL $FullFileNameCFG_CHECK
+
+   if Exist($FullFileNameAPP_CHECK)
+      $HandleCheckAPP = FreeFileHandle
+      Open ($HandleCheckAPP, $FullFileNameAPP_CHECK, 0+2)
+
+      $HandleCheck = FreeFileHandle
+      if Open ($HandleCheck, $FullFileNameCFG_CHECK, 1+4) = 0
+         $Result = WriteLine ($HandleCheck, $Name+@CRLF)
+   
+         $S = ReadLine ($HandleCheckAPP)
+         while @ERROR = 0
+            $S = $Path + "\" + $S
+            $Result = WriteLine ($HandleCheck, $S+@CRLF)
+            $S = ReadLine ($HandleCheckAPP)
+         loop
+   
+         $Result = Close ($HandleCheck)
+         $Result = Close ($HandleCheckAPP)
+         ;-----------------------------------------------------------------
+         $ProgramEXE = 'check.exe' + ' /d"'+$Path+'" /i"'+$FullFileNameCFG_CHECK+'" /c'
+         ;-----------------------------------------------------------------
+         ; $ProgramEXE = '%comspec% /c ' + $ProgramEXE + ' >> "'+$FPSLogFile+ '"'
+         ;-----------------------------------------------------------------
+         LogAdd($Log, $LogFile, "I", @CurDir+" "+$ProgramEXE) 
+         LogAdd($FPSLog, $FPSLogFile, "P", $ProgramEXE) 
+         LogAdd($FPSLog, $FPSLogFile, "P", $Path+"\*.* "+$FileNameCRC_CHECK+" /S")
+         "-----------------------------------------------" ?
+         $ProgramEXE ?
+         Shell $ProgramEXE
+         $Error = @error
+         ?"Error = " $Error ?
+
+
+         MOVE $FullFileNameCFG_CHECK+'.vrf' $FullFileNameCRC_CHECK
+   
+         "-----------------------------------------------" ?
+         LogAdd($FPSLog, $FPSLogFile, "P", "Error = "+$Error) 
+      endif
+   else
+      LogAdd($Log, $LogFile, "I", "Файл "+$FullFileNameAPP_CHECK+" не существует") 
+   endif
+EndFunction
+
+;---------------------------------------------------------
+; CHECKAPP_User
+;---------------------------------------------------------
+function CHECKAPP_User ($Path)
+;begin
+   $FullFileNameCRC_CHECK = $Path + "\" + "check.vrf"
+   ;-----------------------------------------------------------------
+   $ProgramEXE = 'K:\TOOLS\APP\VERBA\CHECK\check.exe' + ' /d"'+$Path+'" /f"'+$FullFileNameCRC_CHECK+'" /v'
+   ;-----------------------------------------------------------------
+   LogAdd($Log, $LogFile, "I", @CurDir+" "+$ProgramEXE) 
+   LogAdd($FPSLog, $FPSLogFile, "P", $ProgramEXE) 
+   "-----------------------------------------------" ?
+   $ProgramEXE ?
+   Shell $ProgramEXE
+   $Error = @error
+   ?"Error = " $Error ?
+   $CHECKAPP_User = $Error
+EndFunction

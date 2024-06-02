@@ -1,0 +1,182 @@
+;----------------------------------------------------------------------------
+; LUHash.kxl
+;----------------------------------------------------------------------------
+; Hash($HashName, $Key, optional $Value)
+;----------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; Hash($HashName, $Key, optional $Value)
+;-------------------------------------------------------------------------------
+;FUNCTION Hash()
+;
+;AUTHOR Howard A. Bullock (habullock@comcast.net)
+;
+;ACTION Creates and maintains a set of associative arrays
+;
+;SYNTAX Hash($HashName, $Key, $Value)
+;
+;PARAMETERS $HashName (Required) - String value
+; $Key (Required) - String value
+; $Value (Required) 
+;
+;REMARKS This function creates and maintains a pair of arrays and manipulates
+; in a such that the function yields multiple hashses.
+; Given the hash name, the function either sets a key and value pair or
+; returns the value of the specofed hash and key.
+;
+;RETURNS Value if no $value is input
+;
+;DEPENDENCIES
+;
+;EXAMPLES Hash("Colors","Green","Favorite Color") Sets a hash value
+; ? "Green Color= " + Hash("Colors","Green") return a hash value
+;
+;-------------------------------------------------------------------------------
+Function Hash($HashName, $Key, optional $Value)
+   Dim $KeyLimit, $key, $found, $x, $y, $rc
+;begin
+   $HashKey = $HashName + "key"
+   $HashValue = $HashName + "value"
+   $Hash = chr(0)
+   $y = '
+
+   If Ubound($$HashKey) = -1
+      Global $$$HashKey[0], $$$HashValue[0]
+   Endif
+
+   $$KeyLimit = Ubound($$$HashKey)
+
+   If VarTypeName($$Value) <> "Empty"
+      ; Set a value
+      $$found = 0
+      For $$x=0 to $$KeyLimit
+         If $$Key = $$$HashKey[$$x]
+            $$$HashValue[$$x] = $$Value
+            $$x = $$KeyLimit + 1
+            $$found = 1
+         Endif
+      Next
+      If $$found = 0
+         Redim Preserve $$$HashKey[$$KeyLimit+1]
+         Redim Preserve $$$HashValue[$$KeyLimit+1]
+         $$$HashKey[$$KeyLimit+1] = $$Key
+         $$$HashValue[$$KeyLimit+1] = $$Value
+      Endif
+   Else
+      ; Read a value
+      For $$x=0 to $$KeyLimit
+         If $$Key = $$$HashKey[$$x]
+            $$Hash = $$$HashValue[$$x]
+            $$x = $$KeyLimit + 1
+         Endif
+      Next
+   Endif'
+   $rc = execute($y)
+Endfunction
+
+;-------------------------------------------------------------------------------
+; HashKeys($HashName)
+;-------------------------------------------------------------------------------
+;FUNCTION HashKeys()
+;
+;AUTHOR Howard A. Bullock (habullock@comcast.net)
+;
+;ACTION Creates and maintains a set of associatice arrays
+;
+;SYNTAX HashKeys($HashName)
+;
+;PARAMETERS $HashName (Required) - String value
+;
+;REMARKS This function returns an array of values that represent keys of
+; the HASH named $HashName.
+;
+;RETURNS Array
+;
+;DEPENDENCIES
+;
+;EXAMPLES $array = HashKeys("Colors")
+;
+;
+;-------------------------------------------------------------------------------
+Function HashKeys($HashName)
+   Dim $Key, $rc
+;begin
+   $HashKey = $HashName + "key"
+   $Hash = chr(0)
+   execute("$$HashKeys = $$HashKey")
+Endfunction
+
+;-------------------------------------------------------------------------------
+; DelHashKey($HashName, $Key)
+;-------------------------------------------------------------------------------
+;FUNCTION DelHashKey()
+;
+;AUTHOR Howard A. Bullock (habullock@comcast.net)
+;
+;ACTION Creates and maintains a set of associatice arrays
+;
+;SYNTAX DelHashKey($HashName, $Key)
+;
+;PARAMETERS $HashName (Required) - String value
+; $Key (Required) - String value
+;
+;REMARKS This function deletes the key/value pair from the hash named $HashName.
+;
+;RETURNS Nothing
+;
+;DEPENDENCIES
+;
+;EXAMPLES DelHashKey("Colors","Green")
+;
+;-------------------------------------------------------------------------------
+Function DelHashKey($HashName, $Key)
+   Dim $KeyLimit, $Key, $found, $x, $y, $rc
+;begin
+   $HashKey = $HashName + "key"
+   $HashValue = $HashName + "value"
+   $Hash = chr(0)
+   $y = '
+
+   $$KeyLimit = Ubound($$$HashKey)
+
+   If VarTypeName($$Key) <> "Empty"
+      ; Set a value
+      $$found = 0
+      For $$x=0 to $$KeyLimit
+         If $$Key = $$$HashKey[$$x]
+            $$found = 1
+         Endif
+         If $$found = 1 and $$x < $$KeyLimit
+            $$$Hashkey[$$x] = $$$Hashkey[$$x+1]
+            $$$HashValue[$$x] = $$$HashValue[$$x+1]
+         Endif
+      Next
+      If $$found = 1
+         Redim Preserve $$$HashKey[$$KeyLimit-1]
+         Redim Preserve $$$HashValue[$$KeyLimit-1]
+         exit 0
+      Else
+         exit 2
+      Endif
+   Endif'
+
+   $rc = execute($y)
+Endfunction
+
+;-------------------------------------------------------------------------------
+;Sample code for use
+;Hash("Colors","Green","Favorite Color")
+;Hash("Colors","Red","Traffic Ticket")
+;Hash("grass","Green","Good Lawn")
+;? "Green grass= " + Hash("grass","Green")
+;DelHashKey("Colors","Green")
+;? "Red Color= " + Hash("Colors","Red")
+;? "Green Color= " + Hash("Colors","Green")
+;? "Green grass= " + Hash("grass","Green")
+;? "Green Color= " + Hash("Colors","Green")
+;
+;Hash("Colors","Red","Traffic Ticket")
+;? "Red Color= " + Hash("Colors","Red")
+;Hash("Colors","Red","Stop")
+;? "Red = " + Hash("Colors","Red")
+;-------------------------------------------------------------------------------

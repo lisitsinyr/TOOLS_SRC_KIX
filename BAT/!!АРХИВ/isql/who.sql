@@ -1,0 +1,1 @@
+SELECT convert(varchar(20), rtrim(loginame)) as loginname, convert(varchar(20),hostname) as hostname, convert(varchar(20),program_name) as program_name, convert(varchar(20),cmd) as cmd from master.dbo.sysprocesses 

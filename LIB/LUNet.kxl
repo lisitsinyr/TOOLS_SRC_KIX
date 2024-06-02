@@ -1,0 +1,1363 @@
+;----------------------------------------------------------------------------
+; LUNet.kxl
+;----------------------------------------------------------------------------
+; GetDomains      ()
+; GetComputers    (optional $domain)
+; CompAcctPswdAge ($Domain, OPTIONAL $MinPswdAge, OPTIONAL $delete)
+; LocalGroups     ($Domain)       for Current User
+; LocalGroups_LU  ($Domain)
+; GetLocalGroups  ($Domain, optional $Log)
+; GetAllGroups    ($Domain, optional $Log)
+; AllGroups       (optional $Log) for Current User
+; GetUserGroups   ($Domain, $Account, optional $Suppress)
+; UserGroups      ($target, $user, OPTIONAL $datatype, Optional $Log)
+; CreateShare     () - creates remote shares 
+; LASTLOGDATE     ($Username)
+; GroupMembers    ($target, $group, optional $flag)
+; InOU            ($OUName, Optional $IsComputer) ; (Standalone version with W9x and NT4 support)
+; InOU2           ($OUName, Optional $IsComputer)
+; MapDrive        ($Drive, $Path, $LogFile, optional $Persistent)
+; WshPipe         ($ShellCMD, OPTIONAL $NoEcho)
+; WSHPing         ($Computer, optional $replies)
+; Ping            ($Computer,$GetIP,optional $LoopCount,optional $TimeOut)
+;----------------------------------------------------------------------------
+
+;--------------------------------------------------------------------
+; GetDomains()
+;--------------------------------------------------------------------
+Function GetDomains()
+   Dim $Objects[0], $i
+;begin
+   $oObjects = getobject("WinNT:")
+   $oObjects.Filter = "Domain"
+   $i = -1
+   for each $Object in $oObjects
+      $i = $i + 1
+      ReDim Preserve $Objects[$i]
+      $Objects[$i] = $Object.Name
+   next
+   $GetDomains = $Objects
+EndFunction
+
+;--------------------------------------------------------------------
+; GetComputers (optional $domain)
+;----------------------------------------------------------------------------
+;
+;ACTION        Enumerate all joined computers in a domain
+;
+;AUTHOR        Jens Meyer (sealeopard@usa.net)
+;
+;VERSION       1.3 (added error codes, changes variable redim algorithm)
+;              1.2
+;
+;DATE CREATED  2002/05/14
+;
+;DATE MODIFIED 2003/06/24
+;
+;KIXTART       4.12+
+;
+;SYNTAX        COMNetView([Domain])
+;
+;PARAMETERS    DOMAIN
+;              Specifies the domain to enumerate. If domain is omitted, returns a
+;              list of all joined computers in the current domain.
+;
+;RETURNS       An array of strings representing all the computers in the domain
+;
+;REMARKS       This function returns all computers that have joined the specified domain
+;              independent of whether the computer is on- or off-line. It will not return
+;              computers running the Windows 9x operating system since they technically do
+;              not join the domain. To include Windows 9x computers in this list, please use
+;              either NetView() or NetView2()
+;
+;DEPENDENCIES  none
+;
+;EXAMPLE       for each $computer in COMNetView()
+;                ? ''+$computer
+;              next
+;
+;KIXTART BBS   http://www.kixtart.org/board/ultimatebb.php?ubb=get_topic;f=12;t=000201
+;
+;--------------------------------------------------------------------
+Function GetComputer($domain, $Computer)
+   Dim $Object
+;begin
+   $Object = GetObject('WinNT://' + $domain + '/' + $Computer)
+   ? $Object.Role
+EndFunction
+
+;--------------------------------------------------------------------
+; GetComputers(optional $domain)
+;--------------------------------------------------------------------
+Function GetComputers(optional $domain)
+   Dim $list, $objDomain, $objComputername, $filter[0]
+;begin
+   ; this function seems to only work on Windows 2000/XP computers
+   ; even in a Windows NT 4.0 domain
+   if val(@INWIN)<>1 or val(@DOS)<5
+      exit 196
+   endif
+
+   $domain = trim($domain)
+   if $domain=''
+      $domain=@DOMAIN
+   endif
+
+   $filter[0]='Computer'
+
+   $objDomain = GetObject('WinNT://' + $domain + ',domain')
+   if @ERROR
+      exit @ERROR
+   endif
+   $objDomain.Filter=$filter
+   if @ERROR
+      exit @ERROR
+   endif
+   For Each $objComputername In $objDomain
+      ? $Domain "\" $objComputername.Name
+      redim preserve $list[ubound($list)+1]
+      $list[ubound($list)] = $objComputername.Name
+      ; GetComputer($Domain, $objComputername.Name)
+   Next
+
+   $objDomain = 0
+
+   $GetComputers = $list
+
+   exit @ERROR
+EndFunction
+
+;----------------------------------------------------------------------------
+; CompAcctPswdAge($Domain, OPTIONAL $MinPswdAge, OPTIONAL $delete)
+;----------------------------------------------------------------------------
+;
+;Author      Christopher Shilt (christopher.shilt@relizon.com)
+;
+;Version   1.1
+;
+;Version History
+;      11 June 2002 Added at 60 password age minimum for deletion of computer account.
+;      Thanks, Howard.
+;
+;      11 June 2002 Version 1.0;
+;Action    Enumerates domain and returns password age with option to
+;      delete computer account.
+;
+;Syntax      CompAcctPswdAge(DOMAIN, optional MINIMUM PASSWORD AGE ,optional DELETE)
+;
+;Parameters 
+;       DOMAIN      : REQUIRED. The domain you want to enumerate.
+;
+;      MINPSWDAGE   : OPTIONAL. Enter the minimum password age you want the function
+;              to return. If not set, will display all computer accounts.
+;      DELETE      : OPTIONAL. Boolean. If DELETE = "1" then the computer account will
+;              be deleted providing that MINPSWDAGE is set and Password Age is
+;              over 60 days.
+;
+;Remarks
+;      Output is tab-delimited with the use of REDIRECTOUTPUT in mind.
+;      Deletion of computer account requires the appropriate admin rights on network.
+;
+;Returns   The Computer Name, the number of days of "Password Age," and (optionally) whether the
+;      account was deleted.
+; 
+;Dependencies   KiX 4.02
+;      ADSI (Included with Windows 2000, available for download from Microsoft for other OS's)
+; 
+;Example:
+;      ;List all Computer Accounts:      
+;      $rc=execute(CompAcctPswdAge(YourDomain))
+;
+;      ;List all Computer Accounts with passwords older than 60 days:
+;      $rc=execute(CompAcctPswdAge(YourDomain,60))
+;
+;      ;Delete all Computer Accounts with passwords older than 90 days:
+;      $rc=execute(CompAcctPswdAge(YourDomain,90,1))
+;
+;Source
+;----------------------------------------------------------------------------
+function CompAcctPswdAge($Domain, OPTIONAL $MinPswdAge, OPTIONAL $delete)
+;begin
+   $Computers=GetObject("WinNT://$Domain")
+   $Computers.filter="Computer",""
+   for each $Computer in $Computers
+      $Account=GetObject("WinNT://$Domain/"+$Computer.name+"$$")
+      $PasswordAge=$Account.get("PasswordAge")
+      $PasswordAge=$PasswordAge/86400
+      if $MinPswdAge=""
+         ? $Computer.name "   " $PasswordAge
+      else
+         if $PasswordAge > $MinPswdAge
+            ? $Computer.name "   " $PasswordAge
+            if $delete = 1 AND $PasswordAge > 60
+               $Computers.Delete("Computer", $Computer.name)
+               "   Deleted"
+            endif
+         endif
+      endif
+   next
+endfunction
+
+;----------------------------------------------------------------------------
+; LocalGroups($Domain) for Current User
+;----------------------------------------------------------------------------
+function LocalGroups($Domain, Optional $Log)
+   Dim $i, $Group, $Groups
+;begin
+   $i = 0
+   do
+      $Group = ENUMLOCALGROUP($i, $Domain)
+      if Len($Group) > 0
+         redim preserve $Groups[$i]
+         $Groups[$i] = UCASE($Domain+"\"+$Group)
+         $i = $i + 1
+      endif
+   until Len($Group) = 0
+   $LocalGroups = ASort($Groups)
+EndFunction
+
+;----------------------------------------------------------------------------
+; AllGroups(Optional $Log) for Current User (Локальные и глобальные)
+;----------------------------------------------------------------------------
+function AllGroups(Optional $Log)
+   Dim $i, $n, $Group, $Groups, $LGroup
+;begin
+   if $Log ? $USERID endif
+   $i = 0
+   do
+      $Group = ENUMGROUP($i)
+      $LGroup = $Group
+      $Domain = ExtractWord(1, $LGroup, "\")
+      $n = WordCount($LGroup, "\")
+      if ($n < 2) 
+         $LGroup = @LDomain+"\"+$LGroup 
+      endif
+      if Len($Group) > 0
+         redim preserve $Groups[$i]
+         $Groups[$i] = $LGroup
+         $i = $i + 1
+      endif
+   until Len($Group) = 0
+   $AllGroups = ASort($Groups)
+EndFunction
+
+;----------------------------------------------------------------------------
+; LocalGroups_LU($Domain)
+;----------------------------------------------------------------------------
+Function LocalGroups_LU($Domain, Optional $Log)
+   Dim $Groups[], $i 
+;begin
+   $Account = getobject("WinNT://$Domain/@UserID,user")
+   $i = -1
+   For Each $group In $Account.Groups
+      if $Log
+         ? $Domain "\" $Group.name
+      endif
+      if $group.groupType = 4
+         $i = $i + 1
+         ReDim Preserve $Groups[$i]
+         $Groups[$i] = UCASE($Domain+"\"+$group.Name)
+      endif
+   Next
+   $LocalGroups_LU = $Groups
+EndFunction 
+
+;----------------------------------------------------------------------------
+; GetAllGroupsUser (Глобальные)
+;----------------------------------------------------------------------------
+Function GetAllGroupsUser (Optional $Log)
+   Dim $objGroups, $objGroup, $Groups, $i 
+;begin
+   $objGroups = getobject("WinNT://@LDomain/@UserID,user")
+   $i = -1
+   For Each $objGroup In $objGroups.Groups
+      if $Log
+         @LDomain "\" $objGroup.name ?
+      endif
+      $i = $i + 1
+      ReDim Preserve $Groups[$i]
+      $Groups[$i] = @LDomain+"\"+$objGroup.Name
+   Next
+   $GetAllGroupsUser = ASort($Groups)
+EndFunction 
+
+;------------------------------------------------------------------------------------
+;  GetUserGroups($Domain, $Account, optional $Log)
+;------------------------------------------------------------------------------------
+;AUTHOR Howard A. Bullock (habullock@comcast.net)
+;
+;ACTION Retrieves groups to which the specified account is a member.
+;
+;SYNTAX GetGroups($Domain, $Account, optional $Suppress)
+;
+;PARAMETERS 
+;   $Domain (Required) - String value
+;   $Account (Required) - String value
+;   $Suppress (Optional) - Integer value [0|1] Default = 0
+;
+;REMARKS 
+;  When a non-zero value is supplied for $Suppress, The screen output
+;  is omitted.
+;
+; Note: ADS_GROUP_TYPE_SECURITY_ENABLED is not shown using WinNT://
+; only security groups exists in NT4 (WinNT://)
+;
+;RETURNS Two-Dimensional Array.
+; 0,x = Group Name
+; 1,x = Group Type
+; x = number of groups
+;
+;DEPENDENCIES KiXtart 4.11
+;
+;EXAMPLES 
+;   $Groups = GetGroups("Domain", @wksta + "$$") for the computer account
+;   $Groups = GetGroups("Domain", "User1") for a user account
+;
+; Group Types
+; ADS_GROUP_TYPE_GLOBAL_GROUP       = 0x00000002,
+; ADS_GROUP_TYPE_DOMAIN_LOCAL_GROUP = 0x00000004,
+; ADS_GROUP_TYPE_LOCAL_GROUP        = 0x00000004,
+; ADS_GROUP_TYPE_UNIVERSAL_GROUP    = 0x00000008,
+; ADS_GROUP_TYPE_SECURITY_ENABLED   = 0x80000000
+;------------------------------------------------------------------------------------
+Function GetUserGroups($Domain, $Account, optional $DataType)
+   Dim $Groups[1,], $NameGroups[], $i
+;begin
+   $oAccount = getobject("WinNT://$Domain/$Account,user")
+   if @error <> 0 and vartype($oAccount) <> 9 exit (@error) endif
+   $i = -1
+   For Each $group In $oAccount.Groups
+      $i = $i + 1
+      select
+         case $datatype     
+            ReDim Preserve $Groups[1,$i]
+            $Groups[0,$i] = UCASE($Domain+"\"+$group.Name)
+            $Groups[1,$i] = $group.groupType
+         case 1             
+            ReDim Preserve $NameGroups[$i]
+            $NameGroups[$i] = UCASE($Domain+"\"+$group.Name)
+      endselect
+   Next
+   select
+      case $datatype     
+         $GetUserGroups = $Groups
+      case 1             
+         $GetUserGroups = ASort($NameGroups)
+   endselect
+EndFunction 
+
+;--------------------------------------------------------------------------------
+; UserGroups($target, $user, OPTIONAL $datatype)
+;--------------------------------------------------------------------------------
+; UserGroups() - returns all groups of a given user 
+;
+;--------------------------------------------------------------------------------
+Function UserGroups($Domains, $User, OPTIONAL $datatype)
+   DIM $Groups[1,0], $NameGroups[0], $i, $LUserGroups
+;begin
+   if IsArray($Domains)
+      $i = -1
+      for each $Domain in $Domains
+         $LUserGroups = GetUserGroups ($Domain, $User, $DataType)
+         $j = -1
+         for each $Group in $LUserGroups
+            $i = $i + 1
+            $j = $j + 1
+            select
+               case $datatype
+                  ReDim Preserve $Groups[1,$i]
+                  $Groups[0,$i] = $LUserGroups[0,$j]
+                  $Groups[1,$i] = $LUserGroups[1,$j]
+               case 1
+                  ReDim Preserve $NameGroups[$i]
+                  $NameGroups[$i] = $LUserGroups[$j]
+            endselect
+         next
+      next
+
+      select
+         case $datatype     
+            $UserGroups = $Groups
+         case 1
+            $UserGroups = ArraySort($NameGroups)
+      endselect
+   else
+      $UserGroups = GetUserGroups ($Domains, $User, $DataType)
+   endif
+endfunction 
+
+;----------------------------------------------------------------------------
+; GetLocalGroups($Domain, optional $Log)
+;----------------------------------------------------------------------------
+; Group Types
+; ADS_GROUP_TYPE_GLOBAL_GROUP = 0x00000002,
+; ADS_GROUP_TYPE_DOMAIN_LOCAL_GROUP = 0x00000004,
+; ADS_GROUP_TYPE_LOCAL_GROUP = 0x00000004,
+; ADS_GROUP_TYPE_UNIVERSAL_GROUP = 0x00000008,
+; ADS_GROUP_TYPE_SECURITY_ENABLED = 0x80000000
+;----------------------------------------------------------------------------
+Function GetLocalGroups($Domain, optional $Log)
+   Dim $ObjectsNT, $i, $Type[8], $j
+   Dim $Objects[2,0]
+;begin
+   $Type[2] = "GLOBAL_GROUP"
+   $Type[4] = "LOCAL_GROUP"
+   $Type[8] = "UNIVERSAL_GROUP"
+   $ObjectsNT = getobject("WinNT://$Domain")
+   $ObjectsNT.Filter = "Group",""
+   $i = -1
+   For Each $Object In $ObjectsNT
+
+      if $Log
+         ? $Domain "\" $Object.name  "=" $Object.grouptype "=" $Object.Description
+      endif
+
+      $j = $Object.groupType
+      if $j = 4
+         $i = $i + 1
+         ReDim Preserve $Objects[2,$i]
+         $Objects[0,$i] = UCASE($Domain+"\"+$Object.Name)
+         $Objects[1,$i] = $Object.Description
+         $Objects[2,$i] = $Object.grouptype
+      endif
+
+   Next
+   $GetLocalGroups = $Objects
+EndFunction 
+
+;----------------------------------------------------------------------------
+; GetAllGroups($Domain, optional $Log)
+;----------------------------------------------------------------------------
+; Group Types
+; ADS_GROUP_TYPE_GLOBAL_GROUP = 0x00000002,
+; ADS_GROUP_TYPE_DOMAIN_LOCAL_GROUP = 0x00000004,
+; ADS_GROUP_TYPE_LOCAL_GROUP = 0x00000004,
+; ADS_GROUP_TYPE_UNIVERSAL_GROUP = 0x00000008,
+; ADS_GROUP_TYPE_SECURITY_ENABLED = 0x80000000
+;----------------------------------------------------------------------------
+Function GetAllGroups($Domain, optional $Log)
+   Dim $ObjectsNT, $i, $Type[8], $j
+   Dim $Objects[2,0]
+;begin
+   $Type[2] = "GLOBAL_GROUP"
+   $Type[4] = "LOCAL_GROUP"
+   $Type[8] = "UNIVERSAL_GROUP"
+   $ObjectsNT = getobject("WinNT://$Domain")
+   $ObjectsNT.Filter="Group",""
+   $i = -1
+   For Each $Object In $ObjectsNT
+
+      if $Log
+         ? $Domain "\" $Object.name  "=" $Object.grouptype "=" $Object.Description
+      endif
+
+      $i = $i + 1
+      ReDim Preserve $Objects[2,$i]
+      $Objects[0,$i] = UCASE($Domain+"\"+$Object.Name)
+      $Objects[1,$i] = $Object.Description
+      $Objects[2,$i] = $Object.grouptype
+
+   Next
+   $GetAllGroups = $Objects
+EndFunction 
+   
+;--------------------------------------------------------------------------------
+; GetGroupType($Group)
+;--------------------------------------------------------------------------------
+function GetGroupType($ServerName, $GroupName)
+;begin
+   $objGroup = getobject("WinNT://"+$ServerName+"/"+$GroupName)
+   $GetGroupType = $ObjGroup.Grouptype
+endfunction 
+
+;--------------------------------------------------------------------------------
+; CreateShare() - creates remote shares 
+;--------------------------------------------------------------------------------
+;Syntax: CreateShare($Server, $ShareName, $SharePath, optional $Domain)
+;
+;Example:
+;
+;code: 
+;--------------------------------------------------------------------------------
+;
+;$server   ="server1"
+;$folder   ="c:\test\share"
+;$share   ="Test Share"
+;CreateShare($server, $share, $folder)
+;
+;--------------------------------------------------------------------------------
+Function CreateShare($Server, $ShareName, $SharePath, optional $Domain)
+;begin
+   if not $domain      $domain   ="@domain"   endif
+   if not $server      $server   ="@wksta"   endif
+
+   $unc   =REPLACE("$folder",":","$$")
+   $uncpath="\\$server\$unc"
+   if not exist("$uncpath")
+      $path=makepath("$uncpath")
+      endif 
+
+   $FService   = GetObject ("WinNT://$Domain/$Server/LanmanServer,FileService")
+   $FileShare   = $FService.Create ("FileShare", $ShareName)
+   $FileShare.Path = $SharePath
+   $FileShare.MaxUserCount = -1   ; -1 allows unlimited connections.  Any other positive number
+   $FileShare.SetInfo
+   $FService   = 0
+   $FileShare   = 0                              
+EndFunction
+
+;--------------------------------------------------------------------------------
+; LASTLOGDATE($Username)
+;--------------------------------------------------------------------------------
+;LASTLOGDATE() - Determine last Logged on or logged off 
+;
+;AUTHOR Kent Dyer (dyerkb@myrealbox.com)
+;Les Ligetfalvy clean-Up and completion
+;
+;ACTION Returns Last Logged on and Logged off dates of users using ADSI
+;
+;SYNTAX LASTLOGDATE($Username)
+;
+;PARAMETERS Username
+;Required string containing the name of the user you are interested in,
+;you could use @USERID
+;
+;RETURNS Last Date the user Logged in ($lastlogofb, $lastloginb, $lastlogofp, $lastloginp )
+;
+;REMARKS Do you have people that never logoff or login? Check this out...
+;The MSDN LINK is - http://msdn.microsoft.com/library/default.asp?url=/library/en-us/net dir/adsi/iadsuser_property_methods.asp 
+;Thanks Les for pointing out the reference for IADsUser
+;
+;DEPENDENCIES Kixtart 4.0, ADSI
+;
+;EXAMPLE(s) $retcode=LASTLOGDATE('kdyer')
+;$retcode=LASTLOGDATE(@USERID)
+;
+;$Username = @USERID
+;$retcode=LASTLOGDATE( $Username )
+;? "Last Logoff date on the BDC: " + $lastlogofb + "Last Login date on the BDC: " + $lastloginb + "Last Logoff date on the PDC: " + $lastlogofp + "Last Login date on the BDC: " + $lastloginp
+;--------------------------------------------------------------------------------
+FUNCTION LASTLOGDATE( $Username )
+   break on
+   Dim $usr
+;begin
+   $usr = GetObject("WinNT://bdc/"+$Username+",user")
+   $lastlogofb = $usr.LastLogoff
+   $lastloginb = $usr.LastLogin
+   ? "Last logoff according to bdc = "+$lastlogofb
+   ? "Last logon according to bdc = "+$lastloginb
+   $usr = GetObject("WinNT://pdc/"+$Username+",user")
+   $lastlogofp = $usr.LastLogoff
+   $lastloginp = $usr.LastLogin
+   ? "Last logoff according to pdc = "+$lastlogofp
+   ? "Last logon according to pdc = "+$lastloginp
+ENDFUNCTION
+
+;--------------------------------------------------------------------------------
+; Groupmembers($target, $group, optional $flag)
+;--------------------------------------------------------------------------------
+;NAME        GroupMembers
+;
+;ACTION      Returns an array of all group members of the specified group
+;
+;SYNTAX      GroupMembers(Target, Group, [FLAG])
+;
+;PARAMETERS  Target
+;               The Domain name or Workstation to work with.  For faster workstation 
+;               execution, include the Domain Name that the workstation is a meber of.
+;
+;               "Kixtart/beanbag" would be working with the workstation Beanbag in the 
+;               Kixtart domain
+;
+;            Group
+;               The Group you want to query
+;
+;            [FLAGS]
+;               To use the flags options add the numbers of the desired flags toghthers and
+;               Use that number in the flag field.
+;
+;                  Filter :(only one filter flag at a time please)
+;                     1 = all
+;                     2 = Users only
+;                     4 = Groups only
+;
+;                  ADSI Information(return ADSI information "pick only one")
+;                     8  = ADSPath field
+;                     16 = ADSI Object Handle
+;
+;RETURNS     an array containing , if the ADSPath option is used the ADSPath 
+;            will also be returned |.
+;
+;REMARKS     ADSI com object must be installed.
+;
+Function Groupmembers($target, $group, optional $flag)
+   DIM $temparray[8], $member, $i, $chunk, $flag, $ADSIFlag, $filterFlag
+;begin
+   $chunk = ubound($temparray)
+   $flag = val($flag)
+   $i = 0
+   $group = getobject("WinNT://$target/$group")
+   if vartype($group) <> 9 exit(@error) endif
+   select
+   case $flag & 1
+      $filterflag = 1
+   case $flag & 2
+      $filterflag = 2
+   case $flag & 4
+      $filterflag = 4
+   case 1
+      $filterflag = 1
+   endselect
+   select
+   case $flag & 8
+      $ADSIFlag = 8
+   case $flag & 16
+      $ADSIFlag = 16
+   endselect
+   for each $member in $group.members
+      select
+      case $filterflag = 2 AND $member.class = "user"
+         if substr($member.name,len($member.name),1) <> "$"
+            $temparray[$i] = $member.name
+            select
+            case $adsiflag = 8
+               $temparray[$i] = $member.adspath
+            case $adsiflag = 16
+               $temparray[$i] = $member
+            endselect
+            $i = $i + 1
+         endif
+      case $filterflag = 4 AND $member.class = "Group"
+         if substr($member.name,len($member.name),1) <> "$"
+            $temparray[$i] = $member.name
+            select
+            case $adsiflag = 8
+               $temparray[$i] = $member.adspath
+            case $adsiflag = 16
+               $temparray[$i] = $member
+            endselect
+            $i = $i + 1
+         endif
+      case $filterflag = 1
+         if substr($member.name,len($member.name),1) <> "$"
+            $temparray[$i] = $member.name
+            select
+            case $adsiflag = 8
+               $temparray[$i] = $member.adspath
+            case $adsiflag = 16
+               $temparray[$i] = $member
+            endselect
+            $i = $i + 1
+         endif
+      case $filterflag
+          ;bit bucket
+      endselect
+      if $i = ubound($temparray)
+          redim preserve $temparray[Ubound($temparray)+$chunk]
+      endif
+   next
+   if $i <> 0
+       redim preserve $temparray[$i-1]
+       $groupmembers=$temparray
+   endif
+endfunction
+
+;--------------------------------------------------------------------------------
+; InOU($OUName, Optional $IsComputer) ; (Standalone version with W9x and NT4 support)
+;--------------------------------------------------------------------------------
+;Function:  InOU
+;Category:  General
+;Action:  Check user/computer OU from Active Directory
+;Updated on 05/09/2002, 9x/NTx flavor only
+;Syntax  InOU("OU Name", ["IsComputer"])
+;Parameters:  Name Type  Optional  Description 
+;OU Name String  Required  The OU name to check, without OU= 
+;IsComputer String  Optional  If IsComputer len is greater than 0, the OU name Owner will be checked for the current workstation, instead of the current user. As of this, you can put any value to IsComputer, from string to number 
+;Remarks:  The following variables have to be declared as is :
+;   GLOBAL $_InOUUser
+;   GLOBAL $_InOUComputer
+;
+;2 flavors of this UDF are present below.
+;One support only W2k, XP and upper OS
+;the other support from 9x to XP, but is a little more slow
+;Returns:  0 if the user/workstation doesn't belong to the given OU
+;1 if the user/workstation belongs to the given OU
+;Dependencies:  Active Directory client installed (Build-in in 2000 and XP systems)
+;Examples:  If inou("my Ou name")=1 ...
+;--------------------------------------------------------------------------------
+Function InOU($OUName, Optional $IsComputer) ; (Standalone version with W9x and NT4 support)
+   Dim $AdoCon
+   dim $AdoCommand
+   dim $Recordset
+   dim $Filter
+   dim $i
+   dim $Userid
+   dim $rc
+;begin   
+   If len($IsComputer)>0
+      $IsComputer=1
+   else
+      $IsComputer=0
+   endif
+   
+   $InOU=0
+   
+   If len($_InOUUser)>0 and len($_InOUComputer)>0
+      If $IsComputer=0
+         If $_InOUUser="Initialized but no OU available"
+            return
+         endif
+         for each $OUelement in split($_InOUUser,",")
+            if $OUElement=$OUName    $InOU=1        endif
+         next
+      else
+         If $_InOUComputer="Initialized but no OU available"
+            return
+         endif
+         for each $OUelement in split($_InOUComputer,",")
+            if $OUElement=$OUName    $InOU=1        endif
+         next
+      endif
+   else
+      If @inwin=2
+         $Userid=@WUserID
+      else
+         $Userid=@UserID
+      endif
+      
+      $AdoCon = CreateObject("ADODB.Connection")
+      $AdoCon.Provider = "ADsDSOObject"
+      $rc=$AdoCon.Open("Active Directory Provider")
+      $AdoCommand = CreateObject("ADODB.Command")
+      $AdoCommand.ActiveConnection = $AdoCon
+      
+      $filter=" where samAccountName='"+$Userid+"' "
+      $AdoCommand.CommandText ="Select  AdsPath from 'LDAP://"+GetObject("LDAP://rootDSE").Get("defaultNamingContext")+"' "+$filter
+      $Recordset = $AdoCommand.Execute
+      If @error=0    
+         ; As a user name and/or computer name is unique in AD, only one record could exist
+         If $Recordset.RecordCount=1
+            $Recordset.movefirst        
+            For each $OUelement in split(substr($Recordset.Fields("AdsPath").value,8),",")
+               If left($OUelement,3)="OU="
+                  $_InOUUser=$_InOUUser +substr($OUelement,4)+","
+                  if $IsComputer=0
+                     if substr($OUelement,4)=$OUName        $InOU=1        endif
+                  endif
+               endif
+            next
+            If len($_InOUUser)=0
+               $_InOUUser="Initialized but no OU available"
+            endif
+         endif
+      endif
+      $filter=" where samAccountName='"+@Wksta+"$$' "
+      $AdoCommand.CommandText ="Select  AdsPath from 'LDAP://"+GetObject("LDAP://rootDSE").Get("defaultNamingContext")+"' "+$filter
+      $Recordset = $AdoCommand.Execute
+      If @error=0
+         ; As a user name and/or computer name is unique in AD, only one record could exist
+         If $Recordset.RecordCount=1
+            $Recordset.movefirst
+            For each $OUelement in split(substr($Recordset.Fields("AdsPath").value,8),",")
+               If left($OUelement,3)="OU="
+                  $_InOUComputer=$_InOUComputer +substr($OUelement,4)+","
+                  if $IsComputer=1
+                     if substr($OUelement,4)=$OUName        $InOU=1        endif
+                  endif
+               endif
+            next
+            If len($_InOUComputer)=0
+               $_InOUComputer="Initialized but no OU available"
+            endif
+         endif
+      endif
+   endif
+  
+Endfunction
+
+;--------------------------------------------------------------------------------
+; InOU2($OUName, Optional $IsComputer)
+;--------------------------------------------------------------------------------
+Function InOU2($OUName, Optional $IsComputer)
+   ; (Standalone version restricted to Windows 2000 and XP systems)
+   dim $OUelement
+;begin
+ 
+   If len($IsComputer)>0
+      $IsComputer=1
+   else
+      $IsComputer=0
+   endif
+   
+   $InOU=0
+   
+   If len($_InOUUser)>0 and len($_InOUComputer)>0
+      If $IsComputer=0
+         If $_InOUUser="Initialized but no OU available"
+            return
+         endif
+         for each $OUelement in split($_InOUUser,",")
+            if $OUElement=$OUName    $InOU=1        endif
+         next
+      else
+         If $_InOUComputer="Initialized but no OU available"
+            return
+         endif
+         for each $OUelement in split($_InOUComputer,",")
+            if $OUElement=$OUName    $InOU=1        endif
+         next
+      endif
+   else
+      $sysinfo = createobject("adsysteminfo")
+      if len($sysinfo)>0
+         for each $OUelement in split($sysinfo.username,",")
+            If left($OUelement,3)="OU="
+               $_InOUUser=$_InOUUser +substr($OUelement,4)+","
+               if $IsComputer=0
+                  if substr($OUelement,4)=$OUName        $InOU=1        endif
+               endif
+            endif
+         next
+         If len($_InOUUser)=0
+            $_InOUUser="Initialized but no OU available"
+         endif
+         
+         for each $OUelement in split($sysinfo.computername,",")
+            If left($OUelement,3)="OU="
+               $_InOUComputer=$_InOUComputer +"," +substr($OUelement,4)
+               if $IsComputer=1
+                  if substr($OUelement,4)=$OUName        $InOU=1        endif
+               endif
+            endif
+         next
+         If len($_InOUComputer)=0
+            $_InOUComputer="Initialized but no OU available"
+         endif
+      endif
+   endif
+  
+Endfunction
+ 
+;--------------------------------------------------------------------
+; MapDrive ($Drive, $Path, $LogFile, optional $Persistent)
+;--------------------------------------------------------------------
+Function MapDrive ($Drive, $Path, $LogFile, optional $Persistent)
+;begin
+
+   $DriveProps = DriveProp($Drive)
+   $ResExecute = Execute ("$$Path = '$Path'")
+
+;LogAdd($Log,$LogFile,"I", $Drive+"="+$DriveProps[1])
+
+;LogAdd($Log,$LogFile,"I", "2016.02.28 D  = " + $Drive)
+;LogAdd($Log,$LogFile,"I", "2016.02.28 P  = " + $Path)
+;LogAdd($Log,$LogFile,"I", "2016.02.28 L  = " + $LogFile)
+;LogAdd($Log,$LogFile,"I", "2016.02.28 P1 = " + Ucase($DriveProps[1]))
+;LogAdd($Log,$LogFile,"I", "2016.02.28 P2 = " + Ucase($DriveProps[2]))
+
+
+   ;if $DriveProps[1] <> ""
+      LogAdd($Log,$LogFile,"I", "Диск "+$Drive + ": ("+$DriveProps[1]+") "+$DriveProps[2]+" "+$Path)
+   ;endif
+   select
+      case (Ucase($DriveProps[1]) = UCase("unknown")) or ($DriveProps[1] = "")
+         ;-------------------------------------------------
+         ; Подключение $Drive => $Path
+         ;-------------------------------------------------
+
+         if Exist ($Path)
+
+ ;добавлено 2016.02.28 начало
+            if $Persistent
+               Use $Drive+":" /Delete /PERSISTENT
+            else
+               Use $Drive+":" /Delete
+            endif
+            LogAdd($Log,$LogFile,"I", "Диск "+$Drive+" отключен от "+$DriveProps[2]+": "+@ERROR)
+ ;добавлено 2016.02.28 конец
+
+            LogAdd($Log,$LogFile,"I", $Drive+" => "+$Path)
+            if $Persistent
+               Use $Drive+":" $Path /Persistent
+            else
+               Use $Drive+":" $Path
+            endif
+            $Error = @ERROR
+            if $Error 
+               LogAdd($Log,$LogFile,"I", "Диск "+$Drive+" не подключен к "+$Path+": "+$Error)
+            else
+               LogAdd($Log,$LogFile,"I", "Диск "+$Drive+" подключен к "+$Path)
+            endif
+         else
+            if $Path <> ""
+               LogAdd($Log,$LogFile,"I", "Диск "+$Drive+" Путь "+$Path+" не существует или нет доступа (unknown)")
+            endif
+         endif
+
+      case Ucase($DriveProps[1]) = UCase("network")
+
+
+         if (UCase($DriveProps[2]) <> UCase($Path)) or (not Exist($DriveProps[2]))
+            ;-------------------------------------------------
+            ; Отключение $Drive
+            ;-------------------------------------------------
+            if $Persistent
+               Use $Drive+":" /Delete /PERSISTENT
+            else
+               Use $Drive+":" /Delete
+            endif
+            LogAdd($Log,$LogFile,"I", "Диск "+$Drive+" отключен от "+$DriveProps[2]+": "+@ERROR)
+         endif
+
+         if (UCase($DriveProps[2]) <> UCase($Path))
+            ;LogAdd($Log,$LogFile,"I", UCase($DriveProps[2])+"="+UCase($Path))
+            ;-------------------------------------------------
+            ; Подключение $Drive => $Path
+            ;-------------------------------------------------
+            if Exist ($Path)
+               ;-------------------------------------------------
+               ; Отключение $Drive
+               ;-------------------------------------------------
+               if $Persistent
+                  Use $Drive+":" /Delete /PERSISTENT
+               else
+                  Use $Drive+":" /Delete
+               endif
+               LogAdd($Log,$LogFile,"I", "Диск "+$Drive+" отключен от "+$DriveProps[2]+": "+@ERROR)
+
+               LogAdd($Log,$LogFile,"I", $Drive+" => "+$Path)
+               if $Persistent
+                  Use $Drive+":" $Path /Persistent
+               else
+                  Use $Drive+":" $Path
+               endif
+               LogAdd($Log,$LogFile,"I", "Диск "+$Drive+" подключен к "+$Path+": "+@ERROR)
+            else
+               if $Path <> ""
+                  LogAdd($Log,$LogFile,"I", "Диск "+$Drive+" Путь "+$Path+" не существует или нет доступа")
+               endif
+            endif
+         else
+            ;LogAdd($Log,$LogFile,"I", "Диск "+$Drive+" уже подключен к "+$Path)
+         endif
+
+      case 1
+         LogAdd($Log,$LogFile,"I", "Диск "+$Drive+" ("+$DriveProps[1]+") нельзя подключить к "+$Path)
+   endselect
+Endfunction
+
+;--------------------------------------------------------------------------------
+; DriveProp
+;--------------------------------------------------------------------------------
+;Function DriveProp()
+;
+;Author Radimus
+;
+;Version 1 (06.20.2002)
+;
+;Action Returns an array of drive properties. 
+;
+;Syntax DriveProp("$drive")
+;
+;Parameters
+; $driveletter- (the drive letter to get properties of)
+;
+;
+;Remarks
+;
+;
+;Returns
+; -array of 6 drive properties, not all properties are filled for every drive type
+;  "driveletter","drivetype","sharename","isready","filesystem","volumename","serialnumber"
+;
+;Dependencies
+; WSH - kix 4.02+
+;
+;Examples
+; $netdrives=DriveProp("c")
+; proparray=split(DriveProp($c))
+;--------------------------------------------------------------------------------
+;function DriveProp($Drive)
+;   dim $fso, $Drives, $list, $param, $property
+;   $DriveType="unknown","removable","fixed","network","cd-rom","ram"
+;   $DrivePara="driveletter","drivetype","sharename","isready","filesystem","volumename","serialnumber"
+;   dim $temparray[6]
+;begin
+;   $fso = createobject("scripting.filesystemobject")
+;   if $fso
+;      $D=$fso.getdrive("$Drive")
+;      for $param = 0 to ubound($DrivePara)
+;         $property = $DrivePara[$param]
+;         $ret = execute('$$temparray[$param]=$$d.$property')
+;         if $param=1   $temparray[$param]=$DriveType[$temparray[$param]] endif
+;      next
+;      $DriveProp=$temparray
+;      $fso=""
+;   endif
+;   exit @error
+;endfunction
+
+;--------------------------------------------------------------------
+; DriveProp
+;--------------------------------------------------------------------
+function DriveProp ($argDrive)
+   Dim $strDrive, $DriveProps[2], $objFSO, $strDrive
+;begin
+   $DriveProps[0] = ""
+   $DriveProps[1] = ""
+   $DriveProps[2] = ""
+   $objFSO = CreateObject("Scripting.FileSystemObject")
+   For each $strDrive In $objFSO.Drives
+      If (LCase($argDrive) = LCase($strDrive.DriveLetter))
+         $DriveProps[0] = $strDrive.DriveLetter+":"
+         Select
+            Case $strDrive.DriveType = 0
+               $DriveProps[1] = "unknown"
+               ;----------------------------------------------
+               ;If $strDrive.IsReady
+               ;   $DriveProps(2) = $strDrive.VolumeName
+               ;endif
+               ;----------------------------------------------
+            Case $strDrive.DriveType = 1
+               $DriveProps[1] = "fdd"
+               ;----------------------------------------------
+               ;If $strDrive.IsReady
+               ;   $DriveProps[2] = $strDrive.VolumeName
+               ;endif
+               ;----------------------------------------------
+            Case $strDrive.DriveType = 2
+               $DriveProps[1] = "fixed  "
+               If $strDrive.IsReady
+                  $DriveProps[2] = $strDrive.VolumeName
+               endif
+            Case $strDrive.DriveType = 3
+               $DriveProps[1] = "network"
+               $DriveProps[2] = $strDrive.ShareName
+            Case $strDrive.DriveType = 4
+               $DriveProps[1] = "cd-rom"
+               ;----------------------------------------------
+               ;If $strDrive.IsReady
+               ;   $DriveProps[2] = $strDrive.VolumeName
+               ;endif
+               ;----------------------------------------------
+            Case $strDrive.DriveType = 5
+               $DriveProps[1] = "virtual"
+               If $strDrive.IsReady then
+                  $DriveProps[2] = $strDrive.VolumeName
+               endif
+         EndSelect  
+      EndIf   
+   Next
+   $DriveProp = $DriveProps
+EndFunction
+
+;--------------------------------------------------------------------
+; ListDrives
+;--------------------------------------------------------------------
+function ListDrives ($argLog, $argFile)
+   Dim $DriveProps, $strDrive, $objFSO
+;begin
+   LogAdd ($argLog, $argFile, "I", "===========================================")
+   LogAdd ($argLog, $argFile, "I", " Список дисков")
+   LogAdd ($argLog, $argFile, "I", "===========================================")
+   $objFSO = CreateObject("Scripting.FileSystemObject")
+   For each $strDrive In $objFSO.Drives
+      $DriveProps = DriveProp ($strDrive.DriveLetter)
+      LogAdd ($argLog, $argFile, "I", $DriveProps[0] + " " + $DriveProps[1] + " " + $DriveProps[2])
+      if ($DriveProps[1] = "network")
+         if (UCase($DriveProps[2]) <> UCase("\\CLIENT\A$"))
+            if not ($objFSO.FolderExists($DriveProps[2]))
+               LogAdd ($argLog, $argFile, "I", $DriveProps[0] + " удален. Нет доспупа к " + $DriveProps[2])
+            endif
+         endif
+      endif
+   next
+   LogAdd (argLog, $argFile, "I", "===========================================")
+EndFunction
+
+;--------------------------------------------------------------------------------
+;WshPipe() - Pipes the results of a shell command to an array. 
+;--------------------------------------------------------------------------------
+;
+;Function:
+; WshPipe()
+;
+;Author:
+; Christopher Shilt (christopher.shilt@relizon.com)
+;
+;Version:
+; 1.2
+;
+;Version History:
+;
+; 18 June 2003 Version 1.2 - Cleaned up code. Added error checking for support of the 
+; WScript.Shell.Exec method.
+;
+; 14 June 2002 Version 1.0 - Original Version.
+;
+;Action:
+; Runs an application in a child command-shell, providing access to the StdOut/StdErr 
+; streams. Pipes the output to an array and returns the ExitCode of the command to the
+; @ERROR macro.
+;
+;Syntax:
+; WshPipe(COMMAND, optional NOECHO)
+;
+;Parameters:
+; COMMAND : REQUIRED. String value indicating the command line used to run the script.
+; The command line should appear exactly as it would if you typed
+; it at the command prompt. 
+;
+; NOECHO : OPTIONAL. Suppress the command's output to the console, ouput is still
+; stored in an array.
+;
+;Remarks:
+;
+;Returns:
+; Output of COMMAND in an array, ExitCode of the COMMAND in the @ERROR macro. By
+; default, the output is echoed to the screen but can be suppressed.
+; 
+;Dependencies:
+; KiX 4.02
+; WSH 5.6 (Included with Microsoft Internet Explorer 6.0. Also available for download
+; from Microsoft's MSDN website.)
+; 
+;Example:
+;
+; ; Display all KiX files in C:\ directory
+; $rc=WshPipe("dir c:\*.kix")
+; @ERROR " | " @SERROR ?
+;
+; ; Display all KiX files in C:\ directory, but suppress output to screen
+; $rc=WshPipe("%comspec% /c dir c:\*.kix",1)
+; @ERROR " | " @SERROR ?
+;
+; ; Display all KiX files in C:\ directory, suppress output to screen. Then use FOR/NEXT
+; ; to exclude data.
+; $rc=WshPipe("%comspec% /c dir c:\*.kix",1)
+; for each $line in $rc
+; if not instr($line, "File Not Found")
+; ? $line
+; endif
+; next
+; @ERROR " | " @SERROR ?
+;
+;Source
+;--------------------------------------------------------------------------------
+Function WshPipe($ShellCMD, OPTIONAL $NoEcho)
+   Dim $oExec, $Output
+;begin
+   $oExec = CreateObject("WScript.Shell").Exec($ShellCMD)
+   If Not VarType($oExec)=9 
+      $WshPipe="WScript.Shell Exec Unsupported" 
+      Exit 10 
+   EndIf
+   While Not $oExec.Status Loop
+   $Output = $oExec.StdOut.ReadAll + $oExec.StdErr.ReadAll
+   If Not $NoEcho 
+      $Output 
+   Endif
+   $WshPipe = Split($Output,CHR(10))
+   Exit($oExec.ExitCode)
+EndFunction 
+
+;--------------------------------------------------------------------------------
+;WSHPing() - WSH ping routine... no temp files 
+;
+;ping function based upon Chris S. WSHPipe Function   
+;
+;Author Radimus  
+;Action Performs a ping to the hostname
+;Returns the IP of the PC or 0.0.0.0 , number of 'hits', and the average ping time
+;Parameters The name of the target, optional number of 'ping replies
+;Dependencies WshPipe() (kix4.02 and WSH 5.6)
+;Examples 
+;$p=WSHPing("server",5)
+;? @error @serror
+;$ipaddress=$p[0]
+;$goodreplies=$p[1]
+;$averageping=$p[2]
+;
+;--------------------------------------------------------------------------------
+
+FUNCTION WSHPing ($Computer, optional $replies, optional $Echo)
+   dim $ip, $l, $r, $count, $return, $line ,$pos, $avg
+;begin
+   if not $replies $replies=1 endif
+   if $Echo $Echo=0 else $Echo=1 endif
+   $ip = 0
+   $Count = 0
+   $Time = 0
+   $shell = '%comspec% /c ping $Computer -n $replies '
+   $return = WSHPipe ($shell, $Echo)
+   if not @error
+      for each $line in $return
+         select
+            case instr($line,"[")
+               $l = instr($line,"[")+1
+               $r = instr($line,"]")
+               $ip = substr($line,$l,$r-$l)
+            case instr($line,"reply from")
+               $Count = $Count+1
+            case instr($line,"Average")
+               $pos = instr($line,"Average")+8
+               $avg = val(right("$line",len($line)-$pos))
+            case instr($line,"TTL")
+               $Count = $Count+1
+
+               $N = WordCount($line,"=")
+               if $N < 4
+                  $Begin = instr($line,"<")+1
+                  $s = $Line
+               else
+                  $Begin = 1
+                  $s = ExtractWord(3, $Line, "=")
+               endif
+               $End = instr($s,Chr(172)+Chr(225))
+
+               $Time = $Time + Val(Substr($s, $Begin, $End-1))
+;? "N=" $N
+;? "Line=" $Line
+;? "s=" $s
+;? "Begin=" $Begin
+;? "End=" $End
+;? "Time=" $Time
+
+         endselect
+         if instr($line,"timed out") 
+            $Count=$Count-1 
+         endif
+      next
+      $avg = $Time / $count
+
+;? "avg=" $avg
+
+      $WSHPing=$ip,$count,$avg
+   else
+      $WSHPing="0.0.0.0","0","0"
+      exit(487)
+   endif
+ENDFUNCTION
+
+;--------------------------------------------------------------------------------
+;Ping() - checks for reply , or returns ip-address of remote host 
+;--------------------------------------------------------------------------------
+;FUNCTION Ping()
+;
+;AUTHOR Jochen Polster (jochen.polster@gmx.net)
+;
+;ACTION Pings the Computer specified, or returns its ip address
+;
+;VERSION 1.1
+;
+;SYNTAX Ping(Computer,GetIP,[LoopCount],[Timeout])
+;
+;PARAMETERS Computer (Required)
+; - String value representing the Computer to ping
+;
+; GetIp (Required)
+; - If specified (1), the function will return the ip-address
+; of specified Computer rather than pinging it ...
+; Has to be 0 if you want to check for reply !
+;
+; LoopCount (Optional but useful !)
+; - Integer value representing the number of times
+; the Computer shall be pinged
+;
+; Timeout (Optional)
+; - if ommited the Computer gets pinged with the default
+; timeout (1s) and default retries (4)
+;
+;REMARKS If there is a reply the function will return immediately with 1
+; so it could be faster not specifiying a timeout.
+; Introduced FreeFileHandle() to be used for the temp file thus making it
+; dependant of 4.11
+;
+;RETURNS 0 - No reply
+; 1 - Ping reply
+; Optional - ip address of specified Computer
+;
+;DEPENDENCIES 4.11 as minimum required KiX Version
+; Supported OS' : NT 3.51 and later
+;
+;EXAMPLES call "path\Ping.udf"
+; if Ping("www.microsoft.com",0,12,5000) ;pings for max. 60 seconds
+; run "%ComSpec% /c start www.microsoft.com"
+; else
+; 'Site isn't available ' ?
+; endif
+; if Ping("www.microsoft.com",0,15) ;pings also for max. 60 seconds
+; run "%ComSpec% /c start www.microsoft.com"
+; else
+; 'Site isn't available ' ?
+; endif
+; $ip = Ping("www.microsoft.com",1)
+; $ip ?
+
+
+function Ping($Computer,$GetIP,optional $LoopCount,optional $TimeOut)
+   if $GetIP
+      dim $ip, $ipfile, $h, $
+      $h = freefilehandle()
+      if $h=0 exit 0 endif
+      $ipfile = @scriptdir + '\ip.txt'
+      shell '%Comspec% /q /e:1024 /c for /F "tokens=2 delims=[]" %%i IN ('+ chr(39)
+         + '"ping $Computer -n 1 | find ".""' + chr(39) + ') do echo %%i >' + $ipfile
+      $=open($h,$ipfile,2) $ip=readline($h) $=close($h) del $ipfile
+      if $ip
+         $Ping = $ip
+      else
+         $Ping = 'Bad IP address $Computer.'
+      endif
+      exit ()
+   else
+      dim $c
+      if $TimeOut
+         for $c = 0 to $LoopCount
+            shell '%Comspec% /C ping $Computer -n 1 -w $TimeOut | find /C "TTL=" > nul'
+            if @error = 0
+               $Ping = 1
+               exit ()
+            endif
+         next
+      else
+         for $c = 0 to $LoopCount
+            shell '%Comspec% /C ping $Computer | find /C "TTL=" > nul'
+            if @error = 0
+               $Ping = 1
+               exit ()
+            endif
+         next
+      endif
+      $Ping = 0
+   endif
+endfunction 
+
+function GetIP()
+;------------------------------------------------------------------
+;
+; GETIP.KIX
+;
+; Sample script demonstrating the use of Windows Management Instrumentation
+; to enumerate IP information of the local system.
+;
+;  Note :  This code sample is provided for demonstration purposes only.
+;          Microsoft makes no warranty, either express or implied,
+;          as to its usability in any given situation.
+;
+;   Copyright (C) 2001 Ruud van Velsen.
+;   All rights reserved.
+;
+;------------------------------------------------------------------
+;begin
+   ;break on
+   $GetIP = ""
+   $IpSet = GetObject("winmgmts:").ExecQuery("select IPAddress,IPSubnet from Win32_NetworkAdapterConfiguration where IPEnabled=TRUE")
+   If @error <> 0
+      $GetIP = @error + "/" @serror
+   else
+      For Each $IPConfig In $IPSet
+         $GetIP = $IPConfig.IPAddress(0) + "/" + $IPConfig.IPSubnet(0)
+      Next
+   EndIf
+endfunction 

@@ -1,0 +1,371 @@
+;--------------------------------------------------------------------
+;
+;--------------------------------------------------------------------
+
+  $NO_ERROR               = 0
+  $E_NO_MEM               = 1
+  $E_CONTROL              = 2
+  $E_DRIVER               = 3
+  $E_IMMITO               = 4
+  $E_KEY_NOT_FOUND        = 6
+  $E_PARAM                = 7
+  $E_INIT                 = 8
+  $E_MEM_LENGTH           = 10
+  $E_MEM_NOT_ENCRYPTED    = 11
+  $E_MEM_NOT_SIGNED       = 12
+  $E_OPEN_IN_FILE         = 21
+  $E_OPEN_OUT_FILE        = 22
+  $E_WRITE_FILE           = 23
+  $E_READ_FILE            = 24
+  $E_RENAME_FILE          = 25
+  $E_FILE_LENGTH          = 26
+  $E_SRC                  = 27
+  $E_FILE_NOT_ENCRYPTED   = 29
+  $E_FILE_NOT_SIGNED      = 30
+
+  $E_SEEK                 = 31
+  $E_CLOSE                = 32
+  $E_DELETE_FILE          = 33
+  $E_GK                   = 34
+  $E_KS                   = 35
+  $E_DEVICE               = 36
+  $E_REDEFINE             = 37          ; для функции InitKey
+  $E_NO_FREE_SLOTS        = 38
+  $E_KEY_NOT_SET          = 39
+  $E_GK_R                 = 40
+  
+  $E_GK_W                 = 41
+  $ERR_UNSUPPORTED_FORMAT = 42
+  $ERR_NUMP               = 101
+  $ERR_HASH               = 102
+  $ERR_OPEN_SPR           = 103
+  $ERR_OPEN_IMM           = 104
+  $ERR_UZ                 = 105
+  $ERR_CKD                = 106
+  $ERR_IMM_SPR            = 107
+  $ERR_READ_SPR           = 108
+  
+  $ERR_WRITE_SPR          = 109
+  $ERR_READ_IMM           = 110
+  $ERR_IMM                = 111
+  $ERR_COMPROM            = 112
+  $ERR_CRE_DIR            = 113
+  $ERR_CRE_FILE           = 114
+  $ERR_EXIST_SPR          = 115
+  $ERR_WRITE_IMM          = 116
+  $ERR_NO_KEY             = 117
+  $ERR_LENGTH             = 118
+
+  $ERR_OPEN_TMP           = 119
+  $ERR_SPR_EMPTY          = 120
+  $ERR_KEY_HEAD           = 121
+  $ERR_FIND_SPR           = 122
+  $ERR_NO_RES             = 123
+  $ERR_IMM_HEAD           = 124
+  $ERR_NO_SIGN            = 125
+  $ERR_NO_IMM             = 126
+  $ERR_FLOP               = 127
+  $ERR_SPR_NOT_FOUND      = 128
+
+  $ERR_BAD_KEY            = 129
+  $ERR_PACK_BUF           = 130
+  $ERR_OTHER_IMM_KEY      = 131
+  $ERR_BAD_KEY_TYPE       = 132
+  $ERR_ANOTHER_CARRIER    = 133
+  $ERR_UNSUPPORTED        = 1000
+  $ERR_CONNECT            = 1001
+  $ERR_NO_CARRIER         = 1002
+  $ERR_INVALID_MEDIA      = 1003
+  $ERR_WRITE_PROTECT      = 1004
+
+  $ERR_INVALID_PASSWD     = 1005
+  $ERR_CANCEL             = 1006
+  $ERR_FULL               = 1007
+  $ERR_VERSION_1          = 1008
+;------------------------------------------------- 74
+  ; Error ASR
+  $BASE_ASR                    = 200               
+
+  $ASR_ERRRO_NUMBER_BEGIN      = BASE_ASR+1
+  $ASR_ERRRO_NUMBER_END        = BASE_ASR+51
+  $ASR_DRIVER_ERROR            = BASE_ASR+1
+  $ERROR_CHECK_SUM             = BASE_ASR+2
+  $DLL_BUFFER_ERROR            = BASE_ASR+3
+  $ERROR_OUTPUT_SIZE           = BASE_ASR+4
+  $ERROR_GET_KEY_INPUT_SIZE    = BASE_ASR+5
+  $ERROR_GET_KEY_INPUT_CHECK   = BASE_ASR+6
+  $ERROR_GET_KEY_COMMAND       = BASE_ASR+7
+  $ERROR_SET_KEY_INPUT_SIZE    = BASE_ASR+8
+  $ERROR_SET_KEY_INPUT_CHECK   = BASE_ASR+9
+  $ERROR_SET_KEY_COMMAND       = BASE_ASR+10
+  $ERROR_CKDI_NOT_SET          = BASE_ASR+11
+  $ERROR_TGKEY_NOT_SET         = BASE_ASR+12
+  $ERROR_GKEY_NOT_SET          = BASE_ASR+13
+  $ERROR_CKD_NOT_SET           = BASE_ASR+14
+  $ERROR_NUM_NOT_SET           = BASE_ASR+15
+  $ERROR_NUMP_NOT_SET          = BASE_ASR+16
+  $ERROR_KEYC_NOT_SET          = BASE_ASR+17
+  $ERROR_UZ_NOT_SET            = BASE_ASR+18
+  $ERROR_DMASK_NOT_SET         = BASE_ASR+19
+  $ERROR_DMASK_REDEFINE        = BASE_ASR+20
+  $ERROR_DMASK_SIZE_SET        = BASE_ASR+21
+  $ERROR_UZ_REDEFINE           = BASE_ASR+22
+  $ERROR_UZ_SIZE_SET           = BASE_ASR+23
+  $ERROR_GKEY_REDEFINE         = BASE_ASR+24
+  $ERROR_GKEY_SIZE_SET         = BASE_ASR+25
+  $ERROR_GKEY_ICMP_SET         = BASE_ASR+26
+  $ERROR_KEYC_REDEFINE         = BASE_ASR+27
+  $ERROR_KEYC_SIZE_SET         = BASE_ASR+28
+  $ERROR_KEYC_ICMP_SET         = BASE_ASR+29
+  $ERROR_NUM_REDEFINE          = BASE_ASR+30
+  $ERROR_NUM_SIZE_SET          = BASE_ASR+31
+  $ERROR_NUMP_REDEFINE         = BASE_ASR+32
+  $ERROR_NUMP_SIZE_SET         = BASE_ASR+33
+  $ERROR_CKEYD_REDEFINE        = BASE_ASR+34
+  $ERROR_CKEYD_SIZE_SET        = BASE_ASR+35
+  $ERROR_CKEYD_NUM_SET         = BASE_ASR+36
+  $ERROR_CKEYD_ICMP_SET        = BASE_ASR+37
+  $ERROR_CKEYDI_REDEFINE       = BASE_ASR+38
+  $ERROR_CKEYDI_SIZE_SET       = BASE_ASR+39
+  $ERROR_CKEYDI_NUMP_SET       = BASE_ASR+40
+  $ERROR_CKEYDI_ICMP_SET       = BASE_ASR+41
+  $ERROR_INIGAMMA_STATUS       = BASE_ASR+42
+  $ERROR_INIGAMMASP_SET        = BASE_ASR+43
+  $ERROR_INIGAMMASP_OVERFLOW   = BASE_ASR+44
+  $ERROR_NUM_ASCII_NUMBER      = BASE_ASR+45
+  $ERROR_NUM_ICMP_SET          = BASE_ASR+46
+  $ERROR_NUMP_ASCII_NUMBER     = BASE_ASR+47
+  $ERROR_NUMP_ICMP_SET         = BASE_ASR+48
+  $ERROR_GOST_KMT_STATUS       = BASE_ASR+49
+  $ERROR_RND_TEST_STATUS       = BASE_ASR+50
+  $DRIVER_OPEN_ERROR           = BASE_ASR+51
+  $ERROR_CANT_RESET_KEY        = BASE_ASR+53
+                              
+  ; Мои ошибки                 
+  $ERR_SECRKEYNOTFOUND         = 500
+  $ERR_NO_SECRPATH             = 501
+  $ERR_NO_BASEPATH             = 502
+  $ERR_BAD_INIT                = 503
+  $ERR_BAD_SPR                 = 504
+  $ERR_BAD_SER                 = 505
+  $ERR_LOCK_COMPROMAT          = 506
+                              
+  $sNO_ERROR                   = 'Нет ошибки.'
+  $sE_NO_MEM                   = 'Не хватает динамической памяти.'
+  $sE_CONTROL                  = 'Сбой криптографической функции или искажение тела библиотеки.'
+  $sE_DRIVER                   = 'Ошибка датчика случайных чисел.'
+  $sE_IMMITO                   = 'Не совпадает имитовставка - файл (блок памяти) искажен.'
+  $sE_KEY_NOT_FOUND            = 'Не найден ключ.'
+  $sE_PARAM                    = 'Ошибка параметра обращения к функции.'
+  $sE_INIT                     = 'Ошибка инициализации.'
+  $sE_MEM_LENGTH               = 'Неверная длина блока памяти.'
+  $sE_MEM_NOT_ENCRYPTED        = 'Попытка расшифровать незашифрованный блок памяти.'
+  $sE_MEM_NOT_SIGNED           = 'Попытка проверить подпись неподписанного блока памяти.'
+  $sE_OPEN_IN_FILE             = 'Ошибка открытия входного файла.'
+  $sE_OPEN_OUT_FILE            = 'Ошибка открытия выходного файла.'
+  $sE_WRITE_FILE               = 'Ошибка записи файла.'
+  $sE_READ_FILE                = 'Ошибка чтения файла.'
+  $sE_RENAME_FILE              = 'Ошибка переименования файла.'
+  $sE_FILE_LENGTH              = 'Неверная (например, нулевая) длина файла.'
+  $sE_SRC                      = 'Несовпадение контрольной суммы зашифрованного файла.'
+  $sE_FILE_NOT_ENCRYPTED       = 'Попытка расшифрования незашифрованного файла.'
+  $sE_FILE_NOT_SIGNED          = 'Попытка проверки подписи неподписанного файла.'
+  $sE_SEEK                     = 'Ошибка смещения файлового указателя.'
+  $sE_CLOSE                    = 'Ошибка закрытия файла.'
+  $sE_DELETE_FILE              = 'Ошибка удаления файла.'
+                                
+  $sE_GK                       = 'Ошибка GK.'
+  $sE_KS                       = 'Ошибка KS.'
+  $sE_DEVICE                   = 'Ошибка DEVICE.'
+  $sE_REDEFINE                 = 'Ошибка REDEFINE.'
+  $sE_NO_FREE_SLOTS            = 'Нет свободных слотов.'
+  $sE_KEY_NOT_SET              = 'Ошибка KEY_NOT_SET'
+  $sE_GK_R                     = 'Ошибка чтения GK.'
+  $sE_GK_W                     = 'Ошибка записи GK.'
+  $sERR_UNSUPPORTED_FORMAT     = 'Формат не поддерживается.'
+  
+  $sERR_NUMP                   = 'Номер ключа NUM или NUMP не соответствует считанному из датчика случайных чисел.'
+  $sERR_HASH                   = 'Значение хэш-функции не совпало.'
+  $sERR_OPEN_SPR               = 'Ошибка при открытии файла со справочником открытых ключей.'
+  $sERR_OPEN_IMM               = 'Ошибка при открытии файла с имитовставками.'
+  $sERR_UZ                     = 'Ошибка чтения UZ.'
+  $sERR_CKD                    = 'Ошибка чтения CKD или CKDI.'
+  $sERR_IMM_SPR                = 'Длина файла со справочником не соответствует длине файла с имитовставками.'
+  $sERR_READ_SPR               = 'Ошибка чтения файла со справочником открытых ключей.'
+  $sERR_WRITE_SPR              = 'Ошибка записи в файл со справочником открытых ключей.'
+  $sERR_READ_IMM               = 'Ошибка чтения файла с имитовставками.'
+  $sERR_IMM                    = 'Имтовставка неверна.'
+  $sERR_COMPROM                = 'Открытый ключ скомпрометирован.'
+  $sERR_CRE_DIR                = 'Ошибка при создании каталога.'
+  $sERR_CRE_FILE               = 'Ошибка при создании файла *.imm, *.imp, или *.spr.'
+  $sERR_EXIST_SPR              = 'В заданном каталоге уже существует файл *.spr.'
+  $sERR_WRITE_IMM              = 'Ошибка записи в файл имитовставок.'
+  $sERR_NO_KEY                 = 'Указанный открытый ключ отсутствует в справочнике.'
+  $sERR_LENGTH                 = 'Неверная длина файла *.imm, *.imp, или *.spr.'
+  $sERR_OPEN_TMP               = 'Ошибка открытия временного файла.'
+  $sERR_SPR_EMPTY              = 'Справочник открытых ключей пуст.'
+  $sERR_KEY_HEAD               = 'Заголовок открытого ключа искажен.'
+  $sERR_FIND_SPR               = 'Справочник открытых ключей не найден.'
+  $sERR_NO_RES                 = 'Открытый ключ не является резервным.'
+  $sERR_IMM_HEAD               = 'Заголовок файла с имитовставками искажен.'
+  $sERR_NO_SIGN                = 'Нет имитовставки на открытый ключ.'
+  $sERR_NO_IMM                 = 'Нет имитовставки на открытый ключ.'
+  $sERR_FLOP                   = 'Ошибка при обращении к гибкому диску.'
+  $sERR_SPR_NOT_FOUND          = 'Справочник не найден.'
+  $sERR_BAD_KEY                = 'ERR_BAD_KEY'
+  $sERR_PACK_BUF               = 'ERR_PACK_BUF'
+  $sERR_OTHER_IMM_KEY          = 'Имитовставка на справочник выработана на ключе другой серии.'
+  $sERR_BAD_KEY_TYPE           = 'Неверный тип ключевого носителя'
+  $sERR_ANOTHER_CARRIER        = 'Вставлен другой носитель.'
+  
+  ; ASR Error
+  $sASR_ERRRO_NUMBER_BEGIN     = 'ASR_ERRRO_NUMBER_BEGIN'
+  $sASR_ERRRO_NUMBER_END       = 'ASR_ERRRO_NUMBER_END'
+  $sASR_DRIVER_ERROR           = 'ASR_DRIVER_ERROR'
+  $sERROR_CHECK_SUM            = 'ERROR_CHECK_SUM'
+  $sDLL_BUFFER_ERROR           = 'DLL_BUFFER_ERROR'
+  $sERROR_OUTPUT_SIZE          = 'ERROR_OUTPUT_SIZE'
+  $sERROR_GET_KEY_INPUT_SIZE   = 'ERROR_GET_KEY_INPUT_SIZE'
+  $sERROR_GET_KEY_INPUT_CHECK  = 'ERROR_GET_KEY_INPUT_CHECK'
+  $sERROR_GET_KEY_COMMAND      = 'ERROR_GET_KEY_COMMAND'
+  $sERROR_SET_KEY_INPUT_SIZE   = 'ERROR_SET_KEY_INPUT_SIZE'
+  $sERROR_SET_KEY_INPUT_CHECK  = 'ERROR_SET_KEY_INPUT_CHECK'
+  $sERROR_SET_KEY_COMMAND      = 'ERROR_SET_KEY_COMMAND'
+  $sERROR_CKDI_NOT_SET         = 'ERROR_CKDI_NOT_SET'
+  $sERROR_TGKEY_NOT_SET        = 'ERROR_TGKEY_NOT_SET'
+  $sERROR_GKEY_NOT_SET         = 'ERROR_GKEY_NOT_SET'
+  $sERROR_CKD_NOT_SET          = 'ERROR_CKD_NOT_SET'
+  $sERROR_NUM_NOT_SET          = 'ERROR_NUM_NOT_SET'
+  $sERROR_NUMP_NOT_SET         = 'ERROR_NUMP_NOT_SET'
+  $sERROR_KEYC_NOT_SET         = 'ERROR_KEYC_NOT_SET'
+  $sERROR_UZ_NOT_SET           = 'ERROR_UZ_NOT_SET'
+  $sERROR_DMASK_NOT_SET        = 'ERROR_DMASK_NOT_SET'
+  $sERROR_DMASK_REDEFINE       = 'ERROR_DMASK_REDEFINE'
+  $sERROR_DMASK_SIZE_SET       = 'ERROR_DMASK_SIZE_SET'
+  $sERROR_UZ_REDEFINE          = 'ERROR_UZ_REDEFINE'
+  $sERROR_UZ_SIZE_SET          = 'ERROR_UZ_SIZE_SET'
+  $sERROR_GKEY_REDEFINE        = 'ERROR_GKEY_REDEFINE'
+  $sERROR_GKEY_SIZE_SET        = 'ERROR_GKEY_SIZE_SET'
+  $sERROR_GKEY_ICMP_SET        = 'ERROR_GKEY_ICMP_SET'
+  $sERROR_KEYC_REDEFINE        = 'ERROR_KEYC_REDEFINE'
+  $sERROR_KEYC_SIZE_SET        = 'ERROR_KEYC_SIZE_SET'
+  $sERROR_KEYC_ICMP_SET        = 'ERROR_KEYC_ICMP_SET'
+  $sERROR_NUM_REDEFINE         = 'ERROR_NUM_REDEFINE'
+  $sERROR_NUM_SIZE_SET         = 'ERROR_NUM_SIZE_SET'
+  $sERROR_NUMP_REDEFINE        = 'ERROR_NUMP_REDEFINE'
+  $sERROR_NUMP_SIZE_SET        = 'ERROR_NUMP_SIZE_SET'
+  $sERROR_CKEYD_REDEFINE       = 'ERROR_CKEYD_REDEFINE'
+  $sERROR_CKEYD_SIZE_SET       = 'ERROR_CKEYD_SIZE_SET'
+  $sERROR_CKEYD_NUM_SET        = 'ERROR_CKEYD_NUM_SET'
+  $sERROR_CKEYD_ICMP_SET       = 'ERROR_CKEYD_ICMP_SET'
+  $sERROR_CKEYDI_REDEFINE      = 'ERROR_CKEYDI_REDEFINE'
+  $sERROR_CKEYDI_SIZE_SET      = 'ERROR_CKEYDI_SIZE_SET'
+  $sERROR_CKEYDI_NUMP_SET      = 'ERROR_CKEYDI_NUMP_SET'
+  $sERROR_CKEYDI_ICMP_SET      = 'ERROR_CKEYDI_ICMP_SET'
+  $sERROR_INIGAMMA_STATUS      = 'ERROR_INIGAMMA_STATUS'
+  $sERROR_INIGAMMASP_SET       = 'ERROR_INIGAMMASP_SET'
+  $sERROR_INIGAMMASP_OVERFLOW  = 'ERROR_INIGAMMASP_OVERFLOW'
+  $sERROR_NUM_ASCII_NUMBER     = 'ERROR_NUM_ASCII_NUMBER'
+  $sERROR_NUM_ICMP_SET         = 'ERROR_NUM_ICMP_SET'
+  $sERROR_NUMP_ASCII_NUMBER    = 'ERROR_NUMP_ASCII_NUMBER'
+  $sERROR_NUMP_ICMP_SET        = 'ERROR_NUMP_ICMP_SET'
+  $sERROR_GOST_KMT_STATUS      = 'ERROR_GOST_KMT_STATUS'
+  $sERROR_RND_TEST_STATUS      = 'ERROR_RND_TEST_STATUS'
+  $sDRIVER_OPEN_ERROR          = 'DRIVER_OPEN_ERROR'
+  $sERROR_CANT_RESET_KEY       = 'ERROR_CANT_RESET_KEY'
+  
+  $sERR_UNSUPPORTED            = 'Функция не поддерживается.'
+  $sERR_CONNECT                = 'Устройство не подключено или занято.'
+  $sERR_NO_CARRIER             = 'Отсуствует носитель в считывателе.'
+  $sERR_INVALID_MEDIA          = 'Носит. не может использоваться в качестве ключевого или структ. носит. искажена.'
+  $sERR_WRITE_PROTECT          = 'Носитель защищен от записи.'
+  $sERR_INVALID_PASSWD         = 'Введен неправильный пароль.'
+  $sERR_CANCEL                 = 'Отказ от выполнения операции.'
+  $sERR_FULL                   = 'Нет места на носителе.'
+  $sERR_VERSION_1              = 'Версия старше 5.0 не поддерживается.'
+  
+  ; Мои ошибки
+  $sERR_SECRKEYNOTFOUND        = 'Секретные ключи шифрования не найдены.'
+  $sERR_NO_SECRPATH            = 'Базовый каталог для секретных ключей не найден'
+  $sERR_NO_BASEPATH            = 'Базовый каталог для справочников открытых ключей не найден'
+  $sERR_BAD_INIT               = 'Глобальная ошибка инициализации функций СКЗИ'
+  $sERR_BAD_SPR                = 'Ошибка в справочнике открытых ключей в справочнике - один из ключей искажен'
+  $sERR_BAD_SER                = 'Cерия открытого ключа не совпадает с серией справочника'
+  $sERR_LOCK_COMPROMAT         = 'Открытый ключ скомпрометирован и заблокирован для удаления и модификации'
+                                
+                                
+  $cErrNum    = 56+54+1+6+9+9
+  $cErrNum    = 135
+
+  $cStrErrArr = $sNO_ERROR,
+                $sE_NO_MEM,$sE_CONTROL,$sE_DRIVER,$sE_IMMITO,
+                $sE_KEY_NOT_FOUND,$sE_PARAM,$sE_INIT,$sE_MEM_LENGTH,$sE_MEM_NOT_ENCRYPTED,$sE_MEM_NOT_SIGNED,
+                $sE_OPEN_IN_FILE,$sE_OPEN_OUT_FILE,$sE_WRITE_FILE,$sE_READ_FILE,$sE_RENAME_FILE,$sE_FILE_LENGTH,
+                $sE_SRC,$sE_FILE_NOT_ENCRYPTED,$sE_FILE_NOT_SIGNED,$sE_SEEK,$sE_CLOSE,$sE_DELETE_FILE,$sERR_NUMP,
+                $sERR_HASH,$sERR_OPEN_SPR,$sERR_OPEN_IMM,$sERR_UZ,$sERR_CKD,$sERR_IMM_SPR,$sERR_READ_SPR,$sERR_WRITE_SPR,
+                $sERR_READ_IMM,$sERR_IMM,$sERR_COMPROM,$sERR_CRE_DIR,$sERR_CRE_FILE,$sERR_EXIST_SPR,$sERR_WRITE_IMM,
+                $sERR_NO_KEY,$sERR_LENGTH,$sERR_OPEN_TMP,$sERR_SPR_EMPTY,$sERR_KEY_HEAD,$sERR_FIND_SPR,$sERR_NO_RES,
+                $sERR_IMM_HEAD,$sERR_NO_SIGN,$sERR_NO_IMM,$sERR_FLOP,$sERR_SECRKEYNOTFOUND,
+                $sERR_NO_SECRPATH,$sERR_NO_BASEPATH,$sERR_BAD_INIT,$sERR_BAD_SPR,$sERR_BAD_SER,
+                $sASR_ERRRO_NUMBER_BEGIN,$sASR_ERRRO_NUMBER_END,$sASR_DRIVER_ERROR,$sERROR_CHECK_SUM,
+                $sDLL_BUFFER_ERROR,$sERROR_OUTPUT_SIZE,$sERROR_GET_KEY_INPUT_SIZE,$sERROR_GET_KEY_INPUT_CHECK,
+                $sERROR_GET_KEY_COMMAND,$sERROR_SET_KEY_INPUT_SIZE,$sERROR_SET_KEY_INPUT_CHECK,$sERROR_SET_KEY_COMMAND,
+                $sERROR_CKDI_NOT_SET,$sERROR_TGKEY_NOT_SET,$sERROR_GKEY_NOT_SET,$sERROR_CKD_NOT_SET,
+                $sERROR_NUM_NOT_SET,$sERROR_NUMP_NOT_SET,$sERROR_KEYC_NOT_SET,$sERROR_UZ_NOT_SET,
+                $sERROR_DMASK_NOT_SET,$sERROR_DMASK_REDEFINE,$sERROR_DMASK_SIZE_SET,$sERROR_UZ_REDEFINE,
+                $sERROR_UZ_SIZE_SET,$sERROR_GKEY_REDEFINE,$sERROR_GKEY_SIZE_SET,$sERROR_GKEY_ICMP_SET,
+                $sERROR_KEYC_REDEFINE,$sERROR_KEYC_SIZE_SET,$sERROR_KEYC_ICMP_SET,$sERROR_NUM_REDEFINE,
+                $sERROR_NUM_SIZE_SET,$sERROR_NUMP_REDEFINE,$sERROR_NUMP_SIZE_SET,$sERROR_CKEYD_REDEFINE,
+                $sERROR_CKEYD_SIZE_SET,$sERROR_CKEYD_NUM_SET,$sERROR_CKEYD_ICMP_SET,$sERROR_CKEYDI_REDEFINE,
+                $sERROR_CKEYDI_SIZE_SET,$sERROR_CKEYDI_NUMP_SET,$sERROR_CKEYDI_ICMP_SET,$sERROR_INIGAMMA_STATUS,
+                $sERROR_INIGAMMASP_SET,$sERROR_INIGAMMASP_OVERFLOW,$sERROR_NUM_ASCII_NUMBER,$sERROR_NUM_ICMP_SET,
+                $sERROR_NUMP_ASCII_NUMBER,$sERROR_NUMP_ICMP_SET,$sERROR_GOST_KMT_STATUS,$sERROR_RND_TEST_STATUS,
+                $sDRIVER_OPEN_ERROR,$sERROR_CANT_RESET_KEY,$sERR_LOCK_COMPROMAT,
+                $sERR_SPR_NOT_FOUND,$sERR_BAD_KEY,$sERR_PACK_BUF,$sERR_OTHER_IMM_KEY,$sERR_BAD_KEY_TYPE,$sERR_ANOTHER_CARRIER,
+                $sE_GK,$sE_KS,$sE_DEVICE,$sE_REDEFINE,$sE_NO_FREE_SLOTS,$sE_KEY_NOT_SET,$sE_GK_R,$sE_GK_W,$sERR_UNSUPPORTED_FORMAT,
+                $sERR_UNSUPPORTED,$sERR_CONNECT,$sERR_NO_CARRIER,$sERR_INVALID_MEDIA,$sERR_WRITE_PROTECT,$sERR_INVALID_PASSWD,
+                $sERR_CANCEL,$sERR_FULL,$sERR_VERSION_1
+                
+  $cIntErrArr = 
+                $NO_ERROR,  $E_NO_MEM,  $E_CONTROL,  $E_DRIVER,  $E_IMMITO,
+                $E_KEY_NOT_FOUND,  $E_PARAM,  $E_INIT,  $E_MEM_LENGTH,  $E_MEM_NOT_ENCRYPTED,
+                $E_MEM_NOT_SIGNED,  $E_OPEN_IN_FILE,  $E_OPEN_OUT_FILE,  $E_WRITE_FILE,
+                $E_READ_FILE,  $E_RENAME_FILE,  $E_FILE_LENGTH,  $E_SRC,  $E_FILE_NOT_ENCRYPTED,  $E_FILE_NOT_SIGNED,
+                $E_SEEK,$E_CLOSE,$E_DELETE_FILE,$ERR_NUMP,$ERR_HASH,$ERR_OPEN_SPR,$ERR_OPEN_IMM,$ERR_UZ,$ERR_CKD,$ERR_IMM_SPR,
+                $ERR_READ_SPR,$ERR_WRITE_SPR,$ERR_READ_IMM,$ERR_IMM,$ERR_COMPROM,$ERR_CRE_DIR,$ERR_CRE_FILE,$ERR_EXIST_SPR,
+                $ERR_WRITE_IMM,$ERR_NO_KEY,$ERR_LENGTH,$ERR_OPEN_TMP,$ERR_SPR_EMPTY,$ERR_KEY_HEAD,$ERR_FIND_SPR,$ERR_NO_RES,
+                $ERR_IMM_HEAD,$ERR_NO_SIGN,$ERR_NO_IMM,$ERR_FLOP,$ERR_SECRKEYNOTFOUND,
+                $ERR_NO_SECRPATH,$ERR_NO_BASEPATH,$ERR_BAD_INIT,$ERR_BAD_SPR,$ERR_BAD_SER,
+                $ASR_ERRRO_NUMBER_BEGIN,$ASR_ERRRO_NUMBER_END,$ASR_DRIVER_ERROR,$ERROR_CHECK_SUM,
+                $DLL_BUFFER_ERROR,$ERROR_OUTPUT_SIZE,$ERROR_GET_KEY_INPUT_SIZE,$ERROR_GET_KEY_INPUT_CHECK,
+                $ERROR_GET_KEY_COMMAND,$ERROR_SET_KEY_INPUT_SIZE,$ERROR_SET_KEY_INPUT_CHECK,$ERROR_SET_KEY_COMMAND,
+                $ERROR_CKDI_NOT_SET,$ERROR_TGKEY_NOT_SET,$ERROR_GKEY_NOT_SET,$ERROR_CKD_NOT_SET,
+                $ERROR_NUM_NOT_SET,$ERROR_NUMP_NOT_SET,$ERROR_KEYC_NOT_SET,$ERROR_UZ_NOT_SET,
+                $ERROR_DMASK_NOT_SET,$ERROR_DMASK_REDEFINE,$ERROR_DMASK_SIZE_SET,$ERROR_UZ_REDEFINE,
+                $ERROR_UZ_SIZE_SET,$ERROR_GKEY_REDEFINE,$ERROR_GKEY_SIZE_SET,$ERROR_GKEY_ICMP_SET,
+                $ERROR_KEYC_REDEFINE,$ERROR_KEYC_SIZE_SET,$ERROR_KEYC_ICMP_SET,$ERROR_NUM_REDEFINE,
+                $ERROR_NUM_SIZE_SET,$ERROR_NUMP_REDEFINE,$ERROR_NUMP_SIZE_SET,$ERROR_CKEYD_REDEFINE,
+                $ERROR_CKEYD_SIZE_SET,$ERROR_CKEYD_NUM_SET,$ERROR_CKEYD_ICMP_SET,$ERROR_CKEYDI_REDEFINE,
+                $ERROR_CKEYDI_SIZE_SET,$ERROR_CKEYDI_NUMP_SET,$ERROR_CKEYDI_ICMP_SET,$ERROR_INIGAMMA_STATUS,
+                $ERROR_INIGAMMASP_SET,$ERROR_INIGAMMASP_OVERFLOW,$ERROR_NUM_ASCII_NUMBER,$ERROR_NUM_ICMP_SET,
+                $ERROR_NUMP_ASCII_NUMBER,$ERROR_NUMP_ICMP_SET,$ERROR_GOST_KMT_STATUS,$ERROR_RND_TEST_STATUS,
+                $DRIVER_OPEN_ERROR,$ERROR_CANT_RESET_KEY,$ERR_LOCK_COMPROMAT,
+                $ERR_SPR_NOT_FOUND,$ERR_BAD_KEY,$ERR_PACK_BUF,$ERR_OTHER_IMM_KEY,$ERR_BAD_KEY_TYPE,$ERR_ANOTHER_CARRIER,
+                $E_GK,$E_KS,$E_DEVICE,$E_REDEFINE,$E_NO_FREE_SLOTS,$E_KEY_NOT_SET,$E_GK_R,$E_GK_W,$ERR_UNSUPPORTED_FORMAT,
+                $ERR_UNSUPPORTED,$ERR_CONNECT,$ERR_NO_CARRIER,$ERR_INVALID_MEDIA,$ERR_WRITE_PROTECT,$ERR_INVALID_PASSWD,
+                $ERR_CANCEL,$ERR_FULL,$ERR_VERSION_1
+               
+;---------------------------------------------------------------------                                
+; DecodeERRV0 ($N)
+;---------------------------------------------------------------------                                
+function DecodeERR ($N)
+;Begin
+   for $I=0 to $cErrNum-1
+      If $N = $cIntErrArr [$I]
+        $DecodeERR = $cStrErrArr [$I]
+        Exit
+      endif
+   next
+   $DecodeERR = 'Неизвестная ошибка. Код возврата: '+$N
+Endfunction                                
+                        

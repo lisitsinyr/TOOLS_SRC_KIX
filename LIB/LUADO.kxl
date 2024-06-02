@@ -1,0 +1,285 @@
+;===============================================================
+; LUADO.kxl
+;---------------------------------------------------------------
+;
+;function CreateConnection()
+;function OpenConnection($objConnection, $ConnectStr)
+;function CloseConnection($objConnection)
+;
+;function CreateCommand($objConnection, $sql, optional $cmdType)
+;function ExecuteCommand($objCommand)
+;
+;function CreateRecordSet()
+;function OpenRecordSet($objRecordSet, $objCommand, optional $curType, optional $lockType)
+;function CloseRecordSet($objRecordSet)
+;
+; Microsoft OLE DB Provider for ODBC
+; "Provider=MSDASQL;DSN=dsnName;UID=MyUserID;PWD=MyPassword;"
+;
+; Microsoft OLE DB Provider for Microsoft Active Directory Service
+; "Provider=ADSDSOObject;User ID=MyUserID;Password=MyPassword;"
+;
+; Microsoft OLE DB Provider for Microsoft Jet
+; The OLE DB Provider for Microsoft Jet allows ADO to access Microsoft Jet databases.
+; "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=databaseName;User ID=MyUserID;Password=MyPassword;"
+;
+; Microsoft OLE DB Provider for SQL Server
+; "Provider=SQLOLEDB;Data Source=serverName; Initial Catalog=databaseName;User ID=MyUserID;Password=MyPassword;"
+;
+; Microsoft OLE DB Provider for Oracle
+; "Provider=MSDAORA;Data Source=serverName;User ID=MyUserID; Password=MyPassword;"
+;---------------------------------------------------------------
+
+   ;------------------------------------------------------------
+   ; curType = permitted values for database cursor
+   ;------------------------------------------------------------
+   $adOpenUnspecified = -1
+   $adOpenForwardOnly = 0
+   $adOpenKeyset      = 1
+   $adOpenDynamic     = 2
+   $adOpenStatic      = 3                        ; default
+ 
+   ;------------------------------------------------------------
+   ; lockType = permitted values for database locking
+   ;------------------------------------------------------------
+   $adLockUnspecified     = -1
+   $adLockReadOnly        = 1                    ; default
+   $adLockPessimistic     = 2
+   $adLockOptimistic      = 3
+   $adLockBatchOptimistic = 4
+ 
+   ;------------------------------------------------------------
+   ; cmdType = permitted values for database query types
+   ;------------------------------------------------------------
+   $adCmdUnspecified  = -1     ;Does not specify the command type argument. 
+   $adCmdText         = 1      ;Evaluates CommandText as a textual definition of a command or stored procedure call. 
+   $adCmdTable        = 2      ;Evaluates CommandText as a table name whose columns are all returned by an internally generated SQL query. 
+   $adCmdStoredProc   = 4      ;Evaluates CommandText as a stored procedure name. 
+   $adCmdUnknown      = 8      ;Default. Indicates that the type of command in the CommandText property is not known. 
+   $adCmdFile         = 256    ;Evaluates CommandText as the file name of a persistently stored Recordset. Used with Recordset.Open or Requery only. 
+   $adCmdTableDirect  = 512    ;Evaluates CommandText as a table name whose columns are all returned. Used with Recordset.Open or Requery only. To use the Seek method, the Recordset must be opened with adCmdTableDirect. 
+                               ;This value cannot be combined with the ExecuteOptionEnum value adAsyncExecute.
+ 
+   ;------------------------------------------------------------
+   ; 
+   ;------------------------------------------------------------
+   $adClipString = 2
+   $adStateOpen = 1
+ 
+   ;------------------------------------------------------------
+   ; 
+   ;------------------------------------------------------------
+   $adUseClient = 3
+
+   ;------------------------------------------------------------
+   ; objRecordSet.Save
+   ;------------------------------------------------------------
+   $adPersistADTG = 0               ;Indicates Microsoft Advanced Data TableGram (ADTG) format. 
+   $adPersistADO = 1                ;Indicates that ADO's own Extensible Markup Language (XML) format will be used. This value is the same as adPersistXML and is included for backwards compatibility. 
+   $adPersistXML = 1                ;Indicates Extensible Markup Language (XML) format. 
+   $adPersistProviderSpecific = 2   ;Indicates that the provider will persist the Recordset using its own format. 
+
+   ;------------------------------------------------------------
+   ; objCommand.Execute
+   ;------------------------------------------------------------
+   $adAsyncExecute = 16             ;Indicates that the command should execute asynchronously. 
+                                    ;This value cannot be combined with the CommandTypeEnum value adCmdTableDirect.
+   $adAsyncFetch = 32               ;Indicates that the remaining rows after the initial quantity specified in the CacheSize property should be retrieved asynchronously. 
+   $adAsyncFetchNonBlocking = 64    ;Indicates that the main thread never blocks while retrieving. If the requested row has not been retrieved, the current row automatically moves to the end of the file. 
+                                    ;If you open a Recordset from a Stream containing a persistently stored Recordset, adAsyncFetchNonBlocking will not have an effect; the operation will be synchronous and blocking.
+                                    ;adAsynchFetchNonBlocking has no effect when the adCmdTableDirect option is used to open the Recordset.
+   $adExecuteNoRecords = 128        ;Indicates that the command text is a command or stored procedure that does not return rows (for example, a command that only inserts data). If any rows are retrieved, they are discarded and not returned. 
+                                    ;adExecuteNoRecords can only be passed as an optional parameter to the Command or Connection Execute method.
+   $adExecuteStream = 1024          ;Indicates that the results of a command execution should be returned as a stream. 
+                                    ;adExecuteStream can only be passed as an optional parameter to the Command Execute method.
+   $adExecuteRecord = 0             ;Indicates that the CommandText is a command or stored procedure that returns a single row which should be returned as a Record object. 
+   $adOptionUnspecified = -1        ;Indicates that the command is unspecified. 
+
+   ;------------------------------------------------------------
+   ; ParameterDirectionEnum
+   ;------------------------------------------------------------
+   $adParamInput        = 1         ;Default. Indicates that the parameter represents an input parameter. 
+   $adParamInputOutput  = 3         ;Indicates that the parameter represents both an input and output parameter. 
+   $adParamOutput       = 2         ;Indicates that the parameter represents an output parameter.  
+   $adParamReturnValue  = 4         ;Indicates that the parameter represents a return value. 
+   $adParamUnknown      = 0         ;Indicates that the parameter direction is unknown. 
+
+   ;------------------------------------------------------------
+   ; DataTypeEnum
+   ;------------------------------------------------------------
+   $adBigInt      = 20  ;Indicates an eight-byte signed integer (DBTYPE_I8). 
+   $adBinary      = 128 ;Indicates a binary value (DBTYPE_BYTES). 
+   $adBoolean     = 11  ;Indicates a boolean value (DBTYPE_BOOL). 
+   $adBSTR        = 8   ;Indicates a null-terminated character string (Unicode) (DBTYPE_BSTR). 
+   $adChapter     = 136 ;Indicates a four-byte chapter value that identifies rows in a child rowset (DBTYPE_HCHAPTER). 
+   $adChar        = 129 ;Indicates a string value (DBTYPE_STR). 
+   $adCurrency    = 6   ;Indicates a currency value (DBTYPE_CY). Currency is a fixed-point number with four digits to the right of the decimal point. It is stored in an eight-byte signed integer scaled by 10,000. 
+   $adDate        = 7   ;Indicates a date value (DBTYPE_DATE). A date is stored as a double, the whole part of which is the number of days since December 30, 1899, and the fractional part of which is the fraction of a day. 
+   $adDBDate      = 133 ;Indicates a date value (yyyymmdd) (DBTYPE_DBDATE). 
+   $adDBTime      = 134 ;Indicates a time value (hhmmss) (DBTYPE_DBTIME). 
+   $adDBTimeStamp = 135 ;Indicates a date/time stamp (yyyymmddhhmmss plus a fraction in billionths) (DBTYPE_DBTIMESTAMP). 
+   $adDecimal     = 14  ;Indicates an exact numeric value with a fixed precision and scale (DBTYPE_DECIMAL). 
+   $adDouble      = 5   ;Indicates a double-precision floating-point value (DBTYPE_R8). 
+   $adEmpty       = 0   ;Specifies no value (DBTYPE_EMPTY). 
+   $adError       = 10  ;Indicates a 32-bit error code (DBTYPE_ERROR). 
+   $adFileTime    = 64  ;Indicates a 64-bit value representing the number of 100-nanosecond intervals since January 1, 1601 (DBTYPE_FILETIME). 
+   $adGUID        = 72  ;Indicates a globally unique identifier (GUID) (DBTYPE_GUID). 
+   $adIDispatch   = 9   ;Indicates a pointer to an IDispatch interface on a COM object (DBTYPE_IDISPATCH). 
+                        ;Note   This data type is currently not supported by ADO. Usage may cause unpredictable results.
+   $adInteger     = 3   ;Indicates a four-byte signed integer (DBTYPE_I4). 
+   $adIUnknown    = 13  ;Indicates a pointer to an IUnknown interface on a COM object (DBTYPE_IUNKNOWN). 
+                        ;Note   This data type is currently not supported by ADO. Usage may cause unpredictable results.
+   $adLongVarBinary     = 205 ;Indicates a long binary value. 
+   $adLongVarChar       = 201 ;Indicates a long string value. 
+   $adLongVarWChar      = 203 ;Indicates a long null-terminated Unicode string value. 
+   $adNumeric           = 131 ;Indicates an exact numeric value with a fixed precision and scale (DBTYPE_NUMERIC). 
+   $adPropVariant       = 138 ;Indicates an Automation PROPVARIANT (DBTYPE_PROP_VARIANT). 
+   $adSingle            = 4   ;Indicates a single-precision floating-point value (DBTYPE_R4). 
+   $adSmallInt          = 2   ;Indicates a two-byte signed integer (DBTYPE_I2). 
+   $adTinyInt           = 16  ;Indicates a one-byte signed integer (DBTYPE_I1). 
+   $adUnsignedBigInt    = 21  ;Indicates an eight-byte unsigned integer (DBTYPE_UI8). 
+   $adUnsignedInt       = 19  ;Indicates a four-byte unsigned integer (DBTYPE_UI4). 
+   $adUnsignedSmallInt  = 18  ;Indicates a two-byte unsigned integer (DBTYPE_UI2). 
+   $adUnsignedTinyInt   = 17  ;Indicates a one-byte unsigned integer (DBTYPE_UI1). 
+   $adUserDefined       = 132 ;Indicates a user-defined variable (DBTYPE_UDT). 
+   $adVarBinary         = 204 ;Indicates a binary value (Parameter object only). 
+   $adVarChar           = 200 ;Indicates a string value. 
+   $adVariant           = 12  ;Indicates an Automation Variant (DBTYPE_VARIANT). 
+                              ;Note   This data type is currently not supported by ADO. Usage may cause unpredictable results.
+   $adVarNumeric        = 139 ;Indicates a numeric value (Parameter object only). 
+   $adVarWChar          = 202 ;Indicates a null-terminated Unicode character string. 
+   $adWChar             = 130 ;Indicates a null-terminated Unicode character string (DBTYPE_WSTR). 
+
+;----------------------------------------------------------------------------
+; CreateConnection()
+;----------------------------------------------------------------------------
+function CreateConnection()
+;begin
+   $CreateConnection = CreateObject("ADODB.Connection")
+   if @ERROR
+      exit @ERROR
+   endif
+endfunction
+
+;----------------------------------------------------------------------------
+; OpenConnection($objConnection, $ConnectStr)
+;----------------------------------------------------------------------------
+function OpenConnection($objConnection, $ConnectStr)
+;begin
+   if $ConnectStr
+      ;? $ConnectStr
+      $objConnection.Open ($ConnectStr)
+   endif
+endfunction
+
+;----------------------------------------------------------------------------
+; CloseConnection($objConnection)
+;----------------------------------------------------------------------------
+function CloseConnection($objConnection)
+;begin
+   $objConnection.Close
+endfunction
+
+;----------------------------------------------------------------------------
+; CreateCommand()
+;----------------------------------------------------------------------------
+function CreateCommand($objConnection, $sql, optional $cmdType)
+;begin
+   $CreateCommand = CreateObject("ADODB.Command")
+   if @ERROR
+      exit @ERROR
+   endif
+   if vartype($cmdType)
+      $cmdType=val($cmdType)
+   else
+      $cmdType=$adCmdText
+   endif
+   $CreateCommand.ActiveConnection = $objConnection
+   $CreateCommand.CommandType = $cmdType
+   $CreateCommand.CommandText = $sql
+endfunction
+
+;----------------------------------------------------------------------------
+; CreateRecordSet()
+;----------------------------------------------------------------------------
+function CreateRecordSet()
+;begin
+   $CreateRecordSet = CreateObject("ADODB.RecordSet")
+   if @ERROR
+      exit @ERROR
+   endif
+   $CreateRecordSet.CursorLocation = $adUseClient
+endfunction
+
+;----------------------------------------------------------------------------
+; OpenRecordSet($objRecordSet, $objCommand, optional $curType, optional $lockType)
+;----------------------------------------------------------------------------
+function OpenRecordSet($objRecordSet, $objCommand, optional $curType, optional $lockType)
+;begin
+   if vartype($curType)
+      $curType=val($curType)
+   else
+      $curType=$adOpenStatic
+   endif
+   if vartype($lockType)
+      $lockType=val($lockType)
+   else
+      $lockType=$adLockReadOnly
+   endif
+   $objRecordset.CursorType = $curType
+   $objRecordset.LockType = $lockType
+   $objRecordset.Open($objCommand, , $curType, $lockType)
+endfunction
+
+;----------------------------------------------------------------------------
+; CloseRecordSet($objRecordSet)
+;----------------------------------------------------------------------------
+function CloseRecordSet($objRecordSet)
+;begin
+   if $objRecordset.state = $adStateOpen
+      $objRecordset.Close
+      if @ERROR
+         exit @ERROR
+      endif
+   endif
+endfunction
+
+;----------------------------------------------------------------------------
+; GetRecordSet($objRecordSet)
+;----------------------------------------------------------------------------
+function GetRecordSet($objRecordSet)
+;begin
+   $Records = $objRecordset.GetRows()
+endfunction
+
+;----------------------------------------------------------------------------
+; RecordCount($objRecordSet)
+;----------------------------------------------------------------------------
+function RecordCount($objRecordSet)
+;begin
+   $RecordCount = $objRecordSet.RecordCount
+endfunction
+
+;----------------------------------------------------------------------------
+; ExecuteCommand($objCommand)
+;----------------------------------------------------------------------------
+function ExecuteCommand($objCommand)
+   Dim $RecordsAffected
+;begin
+   $ExecuteCommand = 0
+   $objRecordSet = $objCommand.Execute($RecordsAffected)
+   if @ERROR
+      exit @ERROR
+   endif
+   $ExecuteCommand = $objRecordSet
+endfunction
+
+
+
+;Public Function GetADOXML(rs As ADODB.Recordset) As String
+;    Dim st As New ADODB.Stream
+;    st.Open
+;    rs.Save st, adPersistXML
+;    GetADOXML = st.ReadText(adReadAll)
+;End Function
+

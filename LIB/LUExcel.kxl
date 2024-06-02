@@ -1,0 +1,367 @@
+;===============================================================
+; LUExcel.kxl
+;---------------------------------------------------------------
+; CreateExcel()
+; ShowExcel($objExcel)
+; NewWorkbook($objExcel)
+; OpenWorkbook($objExcel, $FileName)
+;===============================================================
+
+$xlLeft    = &FFFFEFDD
+$xlBottom  = &FFFFEFF5
+$xlTop     = &FFFFEFC0
+$xlContext = &FFFFEC76
+
+;----------------------------------------------------------------------------
+; CreateExcel()
+;----------------------------------------------------------------------------
+function CreateExcel()
+;begin
+   $CreateExcel = CreateObject("Excel.Application")
+endfunction
+
+;----------------------------------------------------------------------------
+; ShowExcel($objExcel)
+;----------------------------------------------------------------------------
+function ShowExcel($objExcel)
+;begin
+   if $objExcel
+      $objExcel.Visible = TRUE
+   endif
+endfunction
+
+;----------------------------------------------------------------------------
+; NewWorkbook($objExcel)
+;----------------------------------------------------------------------------
+function NewWorkbook($objExcel)
+;begin
+   if $objExcel
+      $NewWorkbook = $objExcel.Workbooks.Add
+   endif
+endfunction
+
+;----------------------------------------------------------------------------
+; OpenWorkbook($objExcel, $FileName)
+;----------------------------------------------------------------------------
+function OpenWorkbook($objExcel, $FileName)
+   if $objExcel
+      $OpenWorkbook = $objExcel.workbooks.open ($filename)
+   endif
+endfunction
+
+;--------------------------------------------------------------------------------
+;READEXCEL() - Read an Excel Spreadsheet and return results 
+;--------------------------------------------------------------------------------
+;FUNCTION READEXCEL()
+;
+;ACTION Reads an Excel Spreadsheet
+;
+;AUTHOR Kent Dyer (dyerkb@myrealbox.com)
+;
+;CONTRIBUTORS Alex, Frans Erich for the idea
+;
+;VERSION 1.4 - re-written for an array
+;
+;DATE CREATED 02-January-2002
+;
+;DATE MODIFIED 27-April-2003
+;
+;KIXTART 4.12
+;
+;SYNTAX READEXCEL('FILENAME')
+;
+;PARAMETERS $Filename
+; XLS file
+;
+;DEPENDENCIES None
+;
+;RETURNS  Values - $Value1, $Value2, $Value3
+;
+;REMARKS
+;{Version 1.2 - Edit 06-April-2003 Added additional error-checking}
+;{Version 1.1 - Edit 28-October-2002 fixed a "dispatch pointer" error}
+;Ref - http://kixtart.org/cgi-bin/ultimatebb.cgi?ubb=get_topic&f=2&t=002715
+;Ref - http://boards.cramsession.com/boards/vbm.asp?rpg=1&wpg=1&sb=0&pvm=False&m=447684
+;
+;EXAMPLE
+;Tested on MS-Excel Files
+;$cFile = "C:\Scripts\Test.XLS"
+;Tested on CSV Files
+;$cFile = "C:\Scripts\Test.CSV"
+;READEXCEL($cFile)
+;
+;KIXTART BBS http://www.kixtart.org/board/ultimatebb.php?ubb=get_topic;f=12;t=000121
+;--------------------------------------------------------------------------------
+FUNCTION READEXCEL($cfilename)
+   DIM $Rc,$Row,$oXL,$a[3],$b[3],$c
+;begin
+   $a=1,3,2 ;columns and order to be read
+   IF 0=EXIST($cfilename) ;insure the file exists
+      ? 'Excel file not found'
+      SLEEP 4
+      RETURN ;leave
+   ENDIF
+   $oXL=Createobject('Excel.application')
+   ; Check to insure that Excel is available
+   IF 0<>@error 
+      ?@error ' Excel Application is not found' 
+      SLEEP 4 
+      RETURN 
+   ENDIF
+   $Rc = $oXL.workbooks.open($cfilename)
+   $Row = 1 ;Row to start at using column headings, change to 0, if needed
+   WHILE $oXL.cells($Row,$a[1]).value<>'' ;need a value each time in column 1
+      $Row=$Row+1
+      IF $oXL.cells($Row,$a[1]).value='' ;Once it gets to a blank row...
+         $oXL.quit ;quit Excel
+         $oXL=0 ;set the object to 0
+      ELSE
+         FOR $c=0 TO ubound($a)
+            $b[$c]=$oXL.cells($Row,$a[$c])
+            $b[$c] ;Print out results
+         NEXT
+      ENDIF
+   LOOP
+   $READEXCEL=$b
+ENDFUNCTION
+  
+;--------------------------------------------------------------------------------
+; ReadExcel2() - Reads from excel 
+;--------------------------------------------------------------------------------
+;Function:  
+;  ReadExcel2()  
+;  
+;Authors:  
+;  Lonkero  
+;  kdyer  
+;  
+;Version:  
+;  2.1
+;  
+;Version History:  
+;  2.1   16.5.2003
+;     added ability to read full sheet (slow)
+;     added option to read all data (faster)
+;  2.0   16.5.2003  
+;     cleaned the code from console outputs  
+;     added proper errorcodes  
+;     added proper parameter-definitions  
+;     proper closing of excel  
+;     well, totally made this a new Xperience       
+;  
+;  1.4   (initial code = ReadExcel UDF) by kdyer  
+;     http://www.kixtart.org/board/ultimatebb.php?ubb=get_topic;f=12;t=000121  
+;  
+;  
+;Action:  
+;  Read from Excel to 2-dimensional array  
+;  
+;Syntax:  
+;  ReadExcel2(FILE, ROWCOUNT, COLUMNCOUNT, [ROWSTART], [COLUMNSTART])  
+;  
+;Parameters:  
+;  FILE  
+;     REQUIRED STRING
+;     File to read from  
+;  SHEET
+;     OPTIONAL INTEGER
+;     Sheet index from which to read.
+;     default = 1
+;  ROWCOUNT
+;     OPTIONAL INTEGER
+;     Amount of Rows to read
+;     if -1 reads until empty field found at the start of row
+;     if left out reads all rows
+;  COLUMNCOUNT  
+;     OPTIONAL INTEGER
+;     Amount of Columns to read
+;     if -1 reads until empty field found at row 1 of Column
+;     if left out reads all Columns
+;  ROWSTART
+;     OPTIONAL INTEGER
+;     Row from which to start reading  
+;     if not specified, defaults to 1  
+;  COLUMNSTART  
+;     OPTIONAL INTEGER
+;     Column from which to start reading  
+;     if not specified, defaults to 1  
+;  
+;Remarks:  
+;  Excel uses row and column numbers starting from 1   
+;  thus the resulting range that starts from [0,0] might confuse a little  
+;  
+;Returns:  
+;  2-dimensional array (table) or  
+;  nothing if failed (see errorcode for reason)  
+;  
+;Errorcodes:  
+;  0  ERROR_SUCCESS     The operation was successfully completed.  
+;  2  ERROR_FILE_NOT_FOUND The system cannot find the file specified.  
+;  87 ERROR_INVALID_PARAMETER The parameter is incorrect.  
+;  1154  ERROR_INVALID_DLL Excel does not exist or is too old to support com.  
+;  
+;Dependencies:  
+;  Excel -97 or newer  
+;  
+;Example:
+;  ;read the default sheet (1) to the first empty field (with 3 columns).
+;  $range=readexcel2('C:\Documents and Settings\niemjo\Tyæpæyt¤\puhluett.xls',,-1,3)
+;  if @error  
+;   "error occured: @serror (@error)"  
+;  else  
+;   for $counter=0 to ubound($range,2)
+;    ? "name: " $range[$counter,0]  
+;    ? "phonenumber: " $range[0,1]  
+;    ? "cellular: " $range[0,2]  
+;    ?
+;   next
+;  
+;Source:  
+;--------------------------------------------------------------------------------
+Function ReadExcel2($0,optional $1,optional $2,optional $3,optional $4,optional $5)
+   dim $,$!
+;begin
+   If 0=Exist($0) exit 2 Endif
+   $ = Createobject('Excel.application')
+   If @error Exit 1154 Endif
+   $.workbooks.open($0).
+   if 8<>vartype($0) exit 87 endif
+   if vartype($1)
+      if 3<>vartype($1) exit 87 endif
+      if 1>$1 exit 87 endif
+   else
+      $1=1
+   endif
+   if vartype($2)
+      if 3<>vartype($2) exit 87 endif
+      if -1=$2
+         for $!=1 to $.sheets($1).rows.count
+            if not $.cells($!,1).value
+               $2=$!-1
+               $!=$.sheets($1).rows.count
+            endif
+         next
+      endif
+   else
+      $2=$!.sheets($1).rows.count
+   endif
+   if vartype($3)
+      if 3<>vartype($3) exit 87 endif
+      if -1=$3
+         for $!=1 to $.sheets($1).columns.count
+            if not $.cells(1,$!).value
+               $3=$!-1
+               $!=$.sheets($1).columns.count
+            endif
+         next
+      endif
+   else
+      $3=$!.sheets($1).columns.count
+   endif
+   if vartype($4)
+      if 3<>vartype($4) exit 87 endif
+      if 1>$4 exit 87 endif
+   else
+      $4=1
+   endif
+   if vartype($5)
+      if 3<>vartype($5) exit 87 endif
+      if 1>$5 exit 87 endif
+   else
+      $5=1
+   endif
+   
+   dim $_[$2-1,$3-1]
+   
+   $ReadExcel2=$_
+   for $!=1 to $2-$4+1
+      for $_=1 to $3-$5+1
+         $ReadExcel[!1-1,$_-1]=$.cells($!,$_).value
+      next
+   next
+   $.workbooks.Close.
+   $.quit
+EndFunction
+
+;-------------------------------------------------------------------------------------
+;$objExcel.Columns("d:d").Select
+;-------------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------------
+;$objExcel.Cells.Select
+;-------------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------------
+;$objExcel.Selection.Font.Size = 14
+;$objExcel.Selection.Font.Bold = True
+;$objExcel.Selection.Font.ColorIndex = 3
+;$objExcel.Selection.Interior.ColorIndex = 30
+;-------------------------------------------------------------------------------------
+
+;--------------------------------------------------------------------
+;$objExcel.Cells($i, $j+1).Font.Size = 12
+;$objExcel.Cells($i, $j+1).Font.Bold = TRUE
+;$objExcel.Cells($i, $j+1).Font.ColorIndex = 3
+;$objExcel.Cells($i, $j+1).Interior.ColorIndex = 30
+;--------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------------
+;$objRange = $objExcel.ActiveCell.EntireColumn
+;$objRange.Font.Size = 14
+;$objRange.Font.Bold = TRUE
+;$objRange.Font.ColorIndex = 3
+;$objRange.Interior.ColorIndex = 30
+;$objRange.AutoFit
+;-------------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------------
+;$Workbook.SaveAs("oracle",  [ByVal FileFormat], [ByVal Password], [ByVal WriteResPassword], 
+;                            [ByVal ReadOnlyRecommended], [ByVal CreateBackup], 
+;                            [ByVal AccessMode As XlSaveAsAccessMode = xlNoChange], 
+;                            [ByVal ConflictResolution], [ByVal AddToMru], [ByVal TextCodepage], 
+;                            [ByVal TextVisualLayout], [ByVal Local])
+;--------------------------------------------------------------------------------------------------
+;// Constants for enum XlFileFormat
+;const
+;  xlAddIn = $00000012;
+;  xlCSV = $00000006;
+;  xlCSVMac = $00000016;
+;  xlCSVMSDOS = $00000018;
+;  xlCSVWindows = $00000017;
+;  xlDBF2 = $00000007;
+;  xlDBF3 = $00000008;
+;  xlDBF4 = $0000000B;
+;  xlDIF = $00000009;
+;  xlExcel2 = $00000010;
+;  xlExcel2FarEast = $0000001B;
+;  xlExcel3 = $0000001D;
+;  xlExcel4 = $00000021;
+;  xlExcel5 = $00000027;
+;  xlExcel7 = $00000027;
+;  xlExcel9795 = $0000002B;
+;  xlExcel4Workbook = $00000023;
+;  xlIntlAddIn = $0000001A;
+;  xlIntlMacro = $00000019;
+;  xlWorkbookNormal = $FFFFEFD1;
+;  xlSYLK = $00000002;
+;  xlTemplate = $00000011;
+;  xlCurrentPlatformText = $FFFFEFC2;
+;  xlTextMac = $00000013;
+;  xlTextMSDOS = $00000015;
+;  xlTextPrinter = $00000024;
+;  xlTextWindows = $00000014;
+;  xlWJ2WD1 = $0000000E;
+;  xlWK1 = $00000005;
+;  xlWK1ALL = $0000001F;
+;  xlWK1FMT = $0000001E;
+;  xlWK3 = $0000000F;
+;  xlWK4 = $00000026;
+;  xlWK3FM3 = $00000020;
+;  xlWKS = $00000004;
+;  xlWorks2FarEast = $0000001C;
+;  xlWQ1 = $00000022;
+;  xlWJ3 = $00000028;
+;  xlWJ3FJ3 = $00000029;
+;  xlUnicodeText = $0000002A;
+;  xlHtml = $0000002C;
+;

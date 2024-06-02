@@ -1,0 +1,381 @@
+;-------------------------------------------------------------------------------
+; $KxlDir
+;-------------------------------------------------------------------------------
+   if not $KxlDir Call "\\S73FS01\APPInfo\Tools\KxlDir.kxl" endif
+
+;-------------------------------------------------------------------------------
+;
+;-------------------------------------------------------------------------------
+$APP_Drive_FSGU       = "G:"
+$APP_Drive_FSGU_PRGGU = "L:"
+$APP_Drive_S73FS01    = "K:"
+$APP_Drive_S73FS02    = "L:"
+$APP_Drive_S73FS03    = "W:"
+$APP_Drive_S73FS04    = "M:"
+$APP_Drive_Local      = "C:"
+
+;-------------------------------------------------------------------------------
+;
+;-------------------------------------------------------------------------------
+$DomainDSP            = "DSP73"
+$SAEDProgram          = "C:\SAED\ArcMail.exe"
+$WinSAEDProgram       = "C:\WinSaed\WinSaed.exe"
+$PasportUOSProgram    = "C:\Pasport_cl\spclient.exe"
+
+;------------------------------------------------------
+; Файловые сервера
+;------------------------------------------------------
+$FileServer01   = "S73FS01"
+$FileServer02   = "S73FS02"
+$FileServer03   = "S73FS03"
+$FileServer04   = "S73FS04"
+$FileServer11   = "S73FS11"
+
+;-------------------------------------------------------------------------------
+;
+;-------------------------------------------------------------------------------
+$LogPath_S73FS01 = "\\S73FS04\log$"
+$LogPath = $LogPath_S73FS01
+
+;-------------------------------------------------------------------------------
+;
+;-------------------------------------------------------------------------------
+If @inwin=2
+   $Userid = @WUserID
+else
+   $Userid = @UserID
+endif
+$Userid    = @UserID
+
+$LoginTerminalServer = ""
+;------------------------------------------------------
+; Старые сервера СТД
+;------------------------------------------------------
+$CitrixServer01      = "S73TS01"
+$CitrixServer02      = "S73TS02"
+$CitrixServer03      = "S73TS03"
+$CitrixServer04      = "S73TS04"
+$CitrixServer05      = "S73TS05"
+$CitrixServer06      = "S73TS06"
+$CitrixServer07      = "S73TS07"
+$CitrixServer08      = "S73TS08"
+$CitrixServer11      = "S73TS11"
+$CitrixServer12      = "S73TS12"
+;------------------------------------------------------
+$CitrixServer08_AP   = "S73AP08"
+$CitrixServer10      = "S73TS10"
+
+;------------------------------------------------------
+; Новые сервера СТД
+;------------------------------------------------------
+$CitrixServer_01      = "S73-TS01"
+$CitrixServer_02      = "S73-TS02"
+$CitrixServer_03      = "S73-TS03"
+$CitrixServer_04      = "S73-TS04"
+$CitrixServer_05      = "S73-TS05"
+$CitrixServer_06      = "S73-TS06"
+$CitrixServer_07      = "S73-TS07"
+$CitrixServer_08      = "S73-TS08"
+$CitrixServer_09      = "S73-TS09"
+;------------------------------------------------------
+$CitrixServer_11      = "S73-TS11"
+$CitrixServer_12      = "S73-TS12"
+$CitrixServer_13      = "S73-TS13"
+
+;------------------------------------------------------
+; сервера СТД ВВГУ
+;------------------------------------------------------
+$CitrixServer22_01    = "S22MRTDTSIAS01"
+$CitrixServer22_02    = "S22MRTDTSIAS02"
+$CitrixServer22_03    = "S22MRTDTSIAS03"
+$CitrixServer22_04    = "S22MRTDTSIAS04"
+$CitrixServer22_05    = "S22MRTDTSIAS05"
+$CitrixServer22_06    = "S22MRTDTSIAS06"
+$CitrixServer22_07    = "S22MRTDTSIAS07"
+$CitrixServer22_08    = "S22MRTDTSIAS08"
+$CitrixServer22_09    = "S22MRTDTSIAS09"
+$CitrixServer22_10    = "S22MRTDTSIAS10"
+$CitrixServer22_11    = "S22MRTDTSIAS11"
+$CitrixServer22_12    = "S22MRTDTSIAS12"
+$CitrixServer22_13    = "S22MRTDTSIAS13"
+$CitrixServer22_14    = "S22MRTDTSIAS14"
+$CitrixServer22_15    = "S22MRTDTSIAS15"
+$CitrixServer22_16    = "S22MRTDTSIAS16"
+$CitrixServer22_17    = "S22MRTDTSIAS17"
+$CitrixServer22_18    = "S22MRTDTSIAS18"
+$CitrixServer22_19    = "S22MRTDTSIAS19"
+$CitrixServer22_20    = "S22MRTDTSIAS20"
+$CitrixServer22_21    = "S22MRTDTSIAS21"
+$CitrixServer22_22    = "S22MRTDTSIAS22"
+$CitrixServer22_23    = "S22MRTDTSIAS23"
+$CitrixServer22_24    = "S22MRTDTSIAS24"
+$CitrixServer22_25    = "S22MRTDTSIAS25"
+$CitrixServer22_26    = "S22MRTDTSIAS26"
+$CitrixServer22_27    = "S22MRTDTSIAS27"
+$CitrixServer22_28    = "S22MRTDTSIAS28"
+$CitrixServer22_29    = "S22MRTDTSIAS29"
+$CitrixServer22_30    = "S22MRTDTSIAS30"
+$CitrixServer22_31    = "S22MRTDTSIAS31"
+$CitrixServer22_32    = "S22MRTDTSIAS32"
+$CitrixServer22_33    = "S22MRTDTSIAS33"
+$CitrixServer22_34    = "S22MRTDTSIAS34"
+$CitrixServer22_35    = "S22MRTDTSIAS35"
+$CitrixServer22_36    = "S22MRTDTSIAS36"
+$CitrixServer22_37    = "S22MRTDTSIAS37"
+$CitrixServer22_38    = "S22MRTDTSIAS38"
+$CitrixServer22_39    = "S22MRTDTSIAS39"
+$CitrixServer22_40    = "S22MRTDTSIAS40"
+$CitrixServer22_41    = "S22MRTDTSIAS41"
+$CitrixServer22_42    = "S22MRTDTSIAS42"
+$CitrixServer22_43    = "S22MRTDTSIAS43"
+$CitrixServer22_44    = "S22MRTDTSIAS44"
+$CitrixServer22_45    = "S22MRTDTSIAS45"
+$CitrixServer22_46    = "S22MRTDTSIAS46"
+$CitrixServer22_47    = "S22MRTDTSIAS47"
+$CitrixServer22_48    = "S22MRTDTSIAS48"
+$CitrixServer22_49    = "S22MRTDTSIAS49"
+$CitrixServer22_50    = "S22MRTDTSIAS50"
+$CitrixServer22_60    = "S22STDTS1"
+$CitrixServer22_61    = "S22STDTS2"
+
+
+$CitrixServerIOD22_01 = "S22MRTDTSIOD01"
+$CitrixServerIOD22_02 = "S22MRTDTSIOD02"
+$CitrixServerIOD22_03 = "S22MRTDTSIOD03"
+$CitrixServerIOD22_04 = "S22MRTDTSIOD04"
+$CitrixServerIOD22_05 = "S22MRTDTSIOD05"
+$CitrixServerIOD22_06 = "S22MRTDTSIOD06"
+$CitrixServerIOD22_07 = "S22MRTDTSIOD07"
+$CitrixServerIOD22_08 = "S22MRTDTSIOD08"
+$CitrixServerIOD22_09 = "S22MRTDTSIOD09"
+$CitrixServerIOD22_10 = "S22MRTDTSIOD10"
+$CitrixServerIOD22_11 = "S22MRTDTSIOD11"
+$CitrixServerIOD22_12 = "S22MRTDTSIOD12"
+$CitrixServerIOD22_13 = "S22MRTDTSIOD13"
+$CitrixServerIOD22_14 = "S22MRTDTSIOD14"
+$CitrixServerIOD22_15 = "S22MRTDTSIOD15"
+$CitrixServerIOD22_16 = "S22MRTDTSIOD16"
+$CitrixServerIOD22_17 = "S22MRTDTSIOD17"
+$CitrixServerIOD22_18 = "S22MRTDTSIOD18"
+$CitrixServerIOD22_19 = "S22MRTDTSIOD19"
+$CitrixServerIOD22_20 = "S22MRTDTSIOD20"
+$CitrixServerIOD22_21 = "S22MRTDTSIOD21"
+$CitrixServerIOD22_22 = "S22MRTDTSIOD22"
+$CitrixServerIOD22_23 = "S22MRTDTSIOD23"
+$CitrixServerIOD22_24 = "S22MRTDTSIOD24"
+$CitrixServerIOD22_25 = "S22MRTDTSIOD25"
+$CitrixServerIOD22_26 = "S22MRTDTSIOD26"
+$CitrixServerIOD22_27 = "S22MRTDTSIOD27"
+$CitrixServerIOD22_28 = "S22MRTDTSIOD28"
+$CitrixServerIOD22_29 = "S22MRTDTSIOD29"
+$CitrixServerIOD22_30 = "S22MRTDTSIOD30"
+$CitrixServerIOD22_31 = "S22MRTDTSIOD31"
+$CitrixServerIOD22_32 = "S22MRTDTSIOD32"
+$CitrixServerIOD22_33 = "S22MRTDTSIOD33"
+$CitrixServerIOD22_34 = "S22MRTDTSIOD34"
+$CitrixServerIOD22_35 = "S22MRTDTSIOD35"
+$CitrixServerIOD22_36 = "S22MRTDTSIOD36"
+$CitrixServerIOD22_37 = "S22MRTDTSIOD37"
+$CitrixServerIOD22_38 = "S22MRTDTSIOD38"
+$CitrixServerIOD22_39 = "S22MRTDTSIOD39"
+$CitrixServerIOD22_40 = "S22MRTDTSIOD40"
+$CitrixServerIOD22_41 = "S22MRTDTSIOD41"
+$CitrixServerIOD22_42 = "S22MRTDTSIOD42"
+$CitrixServerIOD22_43 = "S22MRTDTSIOD43"
+$CitrixServerIOD22_44 = "S22MRTDTSIOD44"
+$CitrixServerIOD22_45 = "S22MRTDTSIOD45"
+$CitrixServerIOD22_46 = "S22MRTDTSIOD46"
+$CitrixServerIOD22_47 = "S22MRTDTSIOD47"
+$CitrixServerIOD22_48 = "S22MRTDTSIOD48"
+$CitrixServerIOD22_49 = "S22MRTDTSIOD49"
+$CitrixServerIOD22_50 = "S22MRTDTSIOD50"
+
+$CitrixServerIOD22_60 = "S22STENDTSIOD01"
+$CitrixServerIOD22_61 = "S22STENDTSIOD02"
+$CitrixServerIOD22_62 = "S22STENDTSIOD03"
+$CitrixServerIOD22_63 = "S22STENDTSIOD04"
+$CitrixServerIOD22_64 = "S22STENDTSIOD05"
+
+$CitrixServerIOD22_65 = "S22MRTDTSIODO01"
+
+$CitrixServer22TERMTST_66 = "S22TERMTST"
+
+$ArrayTerminal  = $CitrixServer01, 
+                  $CitrixServer02, 
+                  $CitrixServer03, 
+                  $CitrixServer04, 
+                  $CitrixServer05,
+                  $CitrixServer06, 
+                  $CitrixServer07, 
+                  $CitrixServer08, 
+                  $CitrixServer11, 
+                  $CitrixServer12,
+
+                  $CitrixServer08_AP, 
+                  $CitrixServer10,
+
+                  $CitrixServer_01,
+                  $CitrixServer_02,
+                  $CitrixServer_03,
+                  $CitrixServer_04,
+                  $CitrixServer_05,
+                  $CitrixServer_06,
+                  $CitrixServer_07,
+                  $CitrixServer_08,
+                  $CitrixServer_09,
+
+                  $CitrixServer_11,
+                  $CitrixServer_12,
+                  $CitrixServer_13
+
+$TerminalUserAppDataDir = "W:\Application Data"
+$TerminalUserAppDataDir_NEW = %USERPROFILE%
+
+;-------------------------------------------------
+; IsTerminalApplication
+;-------------------------------------------------
+function IsTerminalApplication
+;begin
+   $IsTerminalApplication = 0
+   for each $ItemTerminal in $ArrayTerminal
+      if UCase(@WKSTA) = UCase($ItemTerminal)
+         $IsTerminalApplication = 1
+         $LoginTerminalServer = @WKSTA
+         ; LogAdd ($Log, $LogFile, "I", $ItemTerminal+" = 1")
+      endif
+   next
+endfunction
+
+;-------------------------------------------------------------------------------
+;
+;-------------------------------------------------------------------------------
+$OS          = split(@ProductType)[1]
+$CSD         = val(right(@csd,1))
+;$ADMIN       = i_n_group('@wksta\'+sidtoname('S-1-5-32-544'))-1+@INWIN
+
+;-------------------------------------------------------------------------------
+; General Reestr Keys
+;-------------------------------------------------------------------------------
+$HKLMSCCS    = "HKLM\SYSTEM\CurrentControlSet"
+$HKCUSMWCV   = "HKCU\Software\Microsoft\Windows\CurrentVersion"
+$HKLMSMWCV   = "HKLM\Software\Microsoft\Windows\CurrentVersion"
+$HKLMSMWNTCV = "HKLM\Software\Microsoft\Windows NT\CurrentVersion"
+$HKCUSMWNTCV = "HKCU\Software\Microsoft\Windows NT\CurrentVersion"
+
+;-------------------------------------------------------------------------------
+; Users Folders
+;-------------------------------------------------------------------------------
+;[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders]
+;"AppData"="C:\\Documents and Settings\\luis.GU\\Application Data"
+;"Cookies"="C:\\Documents and Settings\\luis.GU\\Cookies"
+;"Desktop"="C:\\Documents and Settings\\luis.GU\\Desktop"
+;"Favorites"="C:\\Documents and Settings\\luis.GU\\Favorites"
+;"NetHood"="C:\\Documents and Settings\\luis.GU\\NetHood"
+;"Personal"="C:\\Documents and Settings\\luis.GU\\My Documents"
+;"PrintHood"="C:\\Documents and Settings\\luis.GU\\PrintHood"
+;"Recent"="C:\\Documents and Settings\\luis.GU\\Recent"
+;"SendTo"="C:\\Documents and Settings\\luis.GU\\SendTo"
+;"Start Menu"="C:\\Documents and Settings\\luis.GU\\Start Menu"
+;"Templates"="C:\\Documents and Settings\\luis.GU\\Templates"
+;"Programs"="C:\\Documents and Settings\\luis.GU\\Start Menu\\Programs"
+;"Startup"="C:\\Documents and Settings\\luis.GU\\Start Menu\\Programs\\Startup"
+;"Local Settings"="C:\\Documents and Settings\\luis.GU\\Local Settings"
+;"Local AppData"="C:\\Documents and Settings\\luis.GU\\Local Settings\\Application Data"
+;"Cache"="C:\\Documents and Settings\\luis.GU\\Local Settings\\Temporary Internet Files"
+;"History"="C:\\Documents and Settings\\luis.GU\\Local Settings\\History"
+;"My Pictures"="C:\\Documents and Settings\\luis.GU\\My Documents\\My Pictures"
+;"Fonts"="C:\\WINDOWS\\Fonts"
+;"My Music"="C:\\Documents and Settings\\luis.GU\\My Documents\\My Music"
+;"Administrative Tools"="C:\\Documents and Settings\\luis.GU\\Start Menu\\Programs\\Administrative Tools"
+;"CD Burning"="C:\\Documents and Settings\\luis.GU\\Local Settings\\Application Data\\Microsoft\\CD Burning"
+;"My Video"="C:\\Documents and Settings\\luis.GU\\My Documents\\My Videos"
+;--------------------------------------------------------------------------------
+$Desktop     = readvalue($HKCUSMWCV+"\Explorer\Shell Folders",'Desktop')
+$StartMenu   = readvalue($HKCUSMWCV+"\Explorer\Shell Folders",'Start Menu')
+$Favorites   = readvalue($HKCUSMWCV+"\Explorer\Shell Folders",'Favorites')
+$Programs    = readvalue($HKCUSMWCV+"\Explorer\Shell Folders",'Programs')
+$Startup     = readvalue($HKCUSMWCV+"\Explorer\Shell Folders",'Startup')
+$MyDocuments = readvalue($HKCUSMWCV+"\Explorer\Shell Folders",'Personal')
+
+;-------------------------------------------------------------------------------
+; Common Folders
+;-------------------------------------------------------------------------------
+;[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders]
+;"Common AppData"="C:\\Documents and Settings\\All Users\\Application Data"
+;"Common Programs"="C:\\Documents and Settings\\All Users\\Start Menu\\Programs"
+;"Common Documents"="C:\\Documents and Settings\\All Users\\Documents"
+;"Common Desktop"="C:\\Documents and Settings\\All Users\\Desktop"
+;"Common Start Menu"="C:\\Documents and Settings\\All Users\\Start Menu"
+;"CommonPictures"="C:\\Documents and Settings\\All Users\\Documents\\My Pictures"
+;"CommonMusic"="C:\\Documents and Settings\\All Users\\Documents\\My Music"
+;"CommonVideo"=""
+;"Common Favorites"="C:\\Documents and Settings\\All Users\\Favorites"
+;"Common Startup"="C:\\Documents and Settings\\All Users\\Start Menu\\Programs\\Startup"
+;"Common Administrative Tools"="C:\\Documents and Settings\\All Users\\Start Menu\\Programs\\Administrative Tools"
+;"Common Templates"="C:\\Documents and Settings\\All Users\\Templates"
+;"Personal"="C:\\Documents and Settings\\luis.GU\\My Documents\\"
+;--------------------------------------------------------------------------------
+$CommonDesktop    = expandenvironmentvars(readvalue($HKLMSMWCV+"\Explorer\User Shell Folders","Common Desktop"))
+$CommonStartMenu  = expandenvironmentvars(readvalue($HKLMSMWCV+"\Explorer\User Shell Folders","Common Start Menu"))
+$CommonFavorites  = expandenvironmentvars(readvalue($HKLMSMWCV+"\Explorer\User Shell Folders","Common Favorites"))
+$CommonPrograms   = expandenvironmentvars(readvalue($HKLMSMWCV+"\Explorer\User Shell Folders","Common Programs"))
+$CommonStartup    = expandenvironmentvars(readvalue($HKLMSMWCV+"\Explorer\User Shell Folders","Common Startup"))
+
+;-------------------------------------------------------------------------------
+; LDAP
+;-------------------------------------------------------------------------------
+; $DomainLDAP       = "LDAP://"+@domain+"/"+GetObject("LDAP://rootDSE").Get("defaultNamingContext")
+; $LDAP             = "LDAP://ou=Users,ou=business1, your company rootDSE info", "LDAP://ou=Users,ou=business2, your company rootDSE info"
+
+;-------------------------------------------------------------------------------
+; Office
+;-------------------------------------------------------------------------------
+$Office97   = readvalue("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Office\8.0", "BinDirPath")
+$Office2000 = readvalue("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Office\9.0\Common\InstallRoot",  "Path")
+$Office2002 = readvalue("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Office\10.0\Common\InstallRoot", "Path")
+$Office2003 = readvalue("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Office\11.0\Common\InstallRoot", "Path")
+$Office2010 = readvalue("HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Office\14.0\Common\InstallRoot", "Path")
+
+;-------------------------------------------------------------------------------
+; 
+;-------------------------------------------------------------------------------
+select
+   case (@ProductType = "Windows 95") 
+      $W95 = 1
+   case (@ProductType = "Windows 98")
+      $W98 = 1
+   case (@ProductType = "Windows NT Workstation")
+      $WNT = 1
+   case (@ProductType = "Windows NT Workstation")
+      $WNT = 1
+   case (@ProductType = "Windows NT Server")
+      $WNT = 1
+   case (@ProductType = "Windows NT Domain Controller")
+      $WNT = 1
+   case (@ProductType = "Windows 2000 Professional")
+      $W2000 = 1
+   case (@ProductType = "Windows 2000 Server")
+      $W2000 = 1
+   case (@ProductType = "Windows 2000 Domain Controller")
+      $W2000 = 1
+   case (@ProductType = "Windows XP Home Edition")
+      $WXP = 1
+   case (@ProductType = "Windows XP Home Edition Tablet PC")
+      $WXP = 1
+   case (@ProductType = "Windows XP Professional")
+      $WXP = 1
+   case (@ProductType = "Windows XP Professional Tablet PC")
+      $WXP = 1
+   case (@ProductType = "Windows Server 2003")
+      $W2003 = 1
+   case (@ProductType = "Windows Server 2003 Domain Controller")
+      $W2003 = 1
+   case (@ProductType = "Windows 6.1 / 1")
+      $W7 = 1
+   case (@ProductType = "Windows 6.2 / 1")
+      $W8 = 1
+endselect
+if $W95 or $W98 $WXX = 1 endif
+if $W2000 or $WXP or $W2003 $WXXXX = 1 endif
+;-------------------------------------------------------------------------------
+

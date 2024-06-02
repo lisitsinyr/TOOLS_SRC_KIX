@@ -1,0 +1,57 @@
+;===============================================================
+; LUXML.kxl
+;---------------------------------------------------------------
+;
+;function CreateXMLDOC()
+;
+;---------------------------------------------------------------
+
+;----------------------------------------------------------------------------
+; CreateXMLDOC()
+;----------------------------------------------------------------------------
+function CreateXMLDOC()
+;begin
+   $CreateXMLDOC = CreateObject("Msxml2.DOMDocument")
+   if @ERROR
+      exit @ERROR
+   endif
+endfunction
+
+;----------------------------------------------------------------------------
+; CreateXMLDOC_4()
+;----------------------------------------------------------------------------
+function CreateXMLDOC_4()
+;begin
+   $CreateXMLDOC = CreateObject("Msxml2.DOMDocument.4.0")
+   if @ERROR
+      exit @ERROR
+   endif
+endfunction
+
+;----------------------------------------------------------------
+;? "nodeName=      " $ConnectionNode.nodeName 
+;? "nodeTypeString=" $ConnectionNode.nodeTypeString
+;? "nodeType=      " $ConnectionNode.nodeType
+;? "nodeTypedValue=" $ConnectionNode.nodeTypedValue
+;----------------------------------------------------------------
+;$NodesList = $ConnectionNode.childNodes
+;For Each $Node In $NodesList
+;   ? "nodeName=" $Node.nodeName "=" $Node.TypedValue
+;Next
+;----------------------------------------------------------------
+
+;$DSN      = $ConnectionNode.getAttribute("DSN")
+;$Provider = $ConnectionNode.getAttribute("Provider")
+;$Server   = $ConnectionNode.getAttribute("Data_Source")
+;$Database = $ConnectionNode.getAttribute("DATABASE")
+;$Login    = $ConnectionNode.getAttribute("UID")
+;$Password = $ConnectionNode.getAttribute("PWD")
+
+;----------------------------------------------------------------
+;? $ConnectionNode.Attributes.Length
+;? $ConnectionNode.Attributes.Item(1).Name
+;$AttributesList = $ConnectionNode.Attributes
+;For Each $Attribute In $AttributesList
+;   ? $Attribute.Name "=" $Attribute.Value
+;Next
+;----------------------------------------------------------------

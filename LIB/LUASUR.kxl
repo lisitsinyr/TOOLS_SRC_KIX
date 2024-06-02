@@ -1,0 +1,74 @@
+;===============================================================
+; LUASUR.kxl
+;===============================================================
+
+;----------------------------------------------------------------------------
+; ASUR_DBConnect()
+;----------------------------------------------------------------------------
+function ASUR_DBConnect()
+;begin
+   $ASUR_DBConnect = CreateObject("DBConnectServ.AMDBConnect") 
+endfunction
+
+;----------------------------------------------------------------------------
+; $ASUR_Logon($ASUR_DBConnect, $Login, $Password)
+;----------------------------------------------------------------------------
+function ASUR_Logon($ASUR_DBConnect, optional $DataSource, optional $Login, optional $Password)
+   if $ASUR_DBConnect
+      if $DataSource
+         $ASUR_Logon = $ASUR_DBConnect.GetConnectionEx ($DataSource, $Login, $Password)
+      else
+         $ASUR_Logon = $ASUR_DBConnect.GetConnection
+      endif
+   endif
+endfunction
+
+;----------------------------------------------------------------------------
+; $ASUR_ExecSQL($ASUR_Logon, $SQL)
+;    .Fields($FieldAlias).Value
+;----------------------------------------------------------------------------
+function ASUR_ExecSQL($ASUR_Logon, $SQL)
+   if $ASUR_Logon
+      $ASUR_ExecSQL = $ASUR_Logon.Execute ($SQL)
+   endif
+endfunction
+
+;----------------------------------------------------------------------------
+; ASUR_FieldsServAMFields()
+;----------------------------------------------------------------------------
+function ASUR_FieldsServAMFields()
+;begin
+   $ASUR_FieldsServAMFields = CreateObject("FieldsServ.AMFields")
+endfunction
+
+;----------------------------------------------------------------------------
+; $ASUR_FieldsServAMQueryFields()
+;     .SelectQuerySQL
+;     .Add ($FiledByID, True)
+;     .WhereString
+;----------------------------------------------------------------------------
+function $ASUR_FieldsServAMQueryFields()
+;begin
+   $ASUR_FieldsServAMQueryFields = CreateObject("FieldsServ.AMQueryFields")
+endfunction
+
+;----------------------------------------------------------------------------
+; ASUR_FieldsServAMFieldLinks()
+;----------------------------------------------------------------------------
+function ASUR_FieldsServAMFieldLinks()
+;begin
+   $ASUR_FieldsServAMFieldLinks = CreateObject("FieldsServ.AMFieldLinks")
+endfunction
+
+;----------------------------------------------------------------------------
+; $ASUR_FieldsServFieldByID($ASUR_FieldsServAMQueryFields, $FiledByID)
+;     .TableAlias
+;     .ASURField.EndFieldName
+;     .FieldAlias
+;     "ASSET_FULLNAME"
+;----------------------------------------------------------------------------
+function $ASUR_FieldsServFieldByID($ASUR_FieldsServAMQueryFields, $FieldsServAMFields, $FiledByID)
+;begin
+   $ASUR_FieldsServFieldByID = $ASUR_FieldsServAMQueryFields.Add($FieldsServAMFields.FieldByID($FiledByID), True)  
+endfunction
+

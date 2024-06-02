@@ -1,0 +1,1257 @@
+;--------------------------------------------------------------------
+; LUStrings.kxl
+;--------------------------------------------------------------------
+; AddChar($Pad, $Input, $Length)
+; AddCharR($Pad, $Input, $Length)
+; ExtractWord($i, $String, $Delimiter)
+; WordCount($String, $Delimiter)
+; BaseConverter($v,$f,$t)
+; CnvtBase2($vNum,$iOB,$iNB,OPTIONAL $bNoHex, OPTIONAL $bForceSep)
+; FMT($sText, $sMinMax, OPTIONAL $iCtrl, OPTIONAL $sPad)
+; PadStr($Input, $Pad, $Length, optional $PadSide)
+; Like($string1, $string2, optional $wc, optional $sc) 
+; Search($searchIn, $searchFor, $searchHow)
+;--------------------------------------------------------------------
+
+;--------------------------------------------------------------------
+; AddChar
+;--------------------------------------------------------------------
+Function AddChar($Pad, $Input, $Length)
+   Dim $i, $x
+;begin
+   $AddChar = ""
+   $Input = "" + $Input
+   $Pad = "" + $Pad
+   $Length = INT($Length)
+   $x = Len($Input)
+   For $i=$x to $Length - 1 Step Len($Pad)
+      $Input = $Pad + $Input
+   Next
+   $Input = Right($Input, $Length)
+   $AddChar = $Input
+   Exit 0
+Endfunction
+
+;--------------------------------------------------------------------
+; AddCharR
+;--------------------------------------------------------------------
+Function AddCharR($Pad, $Input, $Length)
+   Dim $i, $x
+;begin
+   $AddCharR = ""
+   $Input = "" + $Input
+   $Pad = "" + $Pad
+   $Length = INT($Length)
+   $x = Len($Input)
+   For $i=$x to $Length - 1 Step Len($Pad)
+      $Input = $Input + $Pad
+   Next
+   $Input = Left($Input, $Length)
+   $AddCharR = $Input
+   Exit 0
+Endfunction
+
+;--------------------------------------------------------------------
+; ExtractWord
+;--------------------------------------------------------------------
+Function ExtractWord($i, $String, $Delimiter)
+   Dim $Array
+;begin
+   $Array = Split ($String, $Delimiter)
+   if ($i > 0) and ($i <= UBound ($Array)+1)
+      $ExtractWord = $Array[$i-1]
+   else
+      $ExtractWord = ""
+   endif
+Endfunction
+
+;--------------------------------------------------------------------
+; WordCount
+;--------------------------------------------------------------------
+Function WordCount($String, $Delimiter)
+   Dim $Array
+;begin
+   $Array = Split ($String, $Delimiter)
+   $WordCount = UBound($Array)+1
+Endfunction
+
+;--------------------------------------------------------------------
+; ExistWord
+;--------------------------------------------------------------------
+Function ExistWord($String, $Delimiter, $Word)
+;begin
+   $ExistWord = 0
+   $N = WordCount($String, $Delimiter)
+   for $i=1 to $N
+      $W = ExtractWord ($i, $String, $Delimiter)
+      if UCase($Word) = UCase($W) $ExistWord = 1 endif
+   Next
+Endfunction
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;--------------------------------------------------------------------
+; BaseConverter($v,$f,$t)
+;--------------------------------------------------------------------
+;Function BaseConverter()
+;
+;Authors
+;   Howard Bullock
+;   BrianTX
+;   Shawn Tassie
+;   Lonkero
+;
+;Version 1.0 (7.7.2002)
+;
+;Action Converts bases 2-36 from any to any
+;
+;Syntax BaseConverter($Value, $From, $To)
+;
+;Parameters
+;   $Value - String or Integer, Value to be converted
+;   $From - Integer, Base where convert from
+;   $To - Integer, Base to convert to
+;
+;Remarks
+;   Code was produces as kixgolf-competition.
+;   For More info see topics:
+;      http://81.17.37.55/board/ultimatebb.php?ubb=get_topic;f=2;t=003447
+;      http://81.17.37.55/board/ultimatebb.php?ubb=get_topic;f=2;t=003458
+;      http://81.17.37.55/board/ultimatebb.php?ubb=get_topic;f=2;t=003470
+;   Thanks to:
+;      Sealeopard - our host on the competition
+;      Kholm - for participating
+;
+;Returns
+;   on success: Value converted to specified base
+;   on error: nothing. sets error to 1
+;
+;Dependencies
+;   None
+;
+;Example
+;   "Value 44680832201 is in base10" ?
+;   "when converted to base36 it's '"
+;   BaseConverter('44680832201', 10, 36)
+;   "'"
+;
+;Source
+;--------------------------------------------------------------------
+Function BaseConverter($v,$f,$t)
+;begin
+   $=0
+   $t=$+$t
+   $f=$+$f
+   $e=($f>36)|($t>36)|($f<2)|($t<2)   
+   $y=1.
+   for $n=len($v) to 1 step -1
+      $x=ASC(UCASE(substr($v,$n,1)))
+      $z=($x-48-($x>64)*7)
+      IF ($z<0)|(($x>57)&($x<65))|$e|($z>($f-1))
+       EXIT 1
+      ENDIF
+      $=$y*$z+$
+      $y=$y*$f
+   next
+   $n=""
+   While $
+      $x=INT($-(INT($/$t)*$t))
+      $=($-$x)/$t
+      $n=CHR($x+48+($x>9)*7)+$n
+   Loop
+   $BaseConverter=$n
+Endfunction
+
+;--------------------------------------------------------------------------------
+; CnvtBase2($vNum,$iOB,$iNB,OPTIONAL $bNoHex, OPTIONAL $bForceSep)
+;--------------------------------------------------------------------------------
+;Function CnvtBase2()
+;
+;Author New Mexico Mark
+;
+;Action Within the numeric and string limits of KiXtart, converts any
+; numeric base to any other numeric base.
+;
+;Syntax CnvtBase2(Number, OldBase, NewBase [,NoHex] [,ForceSep])
+;
+;Parameters Number - expression that evaluates to a number, numeric string,
+; or array of digits with least significant digit in 
+; element 0 and an optional sign "-" in the highest
+; element in the array.
+; OldBase - The base of the number supplied.
+; NewBase - The base to convert that number to
+; NoHex - Boolean true to forces the function to use only
+; characters 0-9 for return AND submitted values
+; ForceSep- Always include separation characters between
+; returned digits
+;
+;Remarks I originally developed CnvtBase to convert any base 2-36 to
+; any other base 2-36. However, in order to handle bases greater
+; than 16, I used the alphabetic characters G-Z. The problems
+; with that approach are:
+; 1. Symbols beyond F for higher bases are not standardized.
+; 2. I still had an upper limit of base 36.
+; 3. There would have to be too much programming outside the
+; function in order to handle these characters correctly.
+; My solution is as follows:
+; For bases 2-16, alphanumeric characters 0-9 and A-F may be
+; supplied as a number (base 10 and below), string (bases 2-16)
+; or array of digits with the least significant digit in element
+; zero of the array.
+; The number in the new base is returned as a string. If any
+; digit in the returned string exceeds the maximum value for
+; that base (9 for base 10 or 15 for base 16), separation
+; characters will be included.
+; For consistency, the function may be forced to include a
+; separation character for any returned number.
+; Other Notes:
+; 1. The maximum *base 10* value of the supplied number cannot
+; exceed KiXtart's 31-bit numeric limit. If this happens, the
+; function will not necessarily have an error, but it will
+; return incorrect results.
+; 2. Error code 0 indicates function success, -1 for failure.
+;
+;Dependencies None
+; 
+;Example(s)
+;$T1='190ACF'
+;$T2='-190'
+;'CnvtBase2(0,10,16) = ' + CnvtBase2(0,10,16) ?
+;'CnvtBase2(0,10,16,1) = ' + CnvtBase2(0,10,16,1) ?
+;'CnvtBase2(0,10,16,1,1) = ' + CnvtBase2(0,10,16,1,1) ?
+;'CnvtBase2("$T1",16,2) = ' + CnvtBase2($T1,16,2) ?
+;'CnvtBase2("$T1",16,2,1) = ' + CnvtBase2($T1,16,2,1) ?
+;'CnvtBase2("$T1",16,2,1,1) = ' + CnvtBase2($T1,16,2,1,1) ?
+;'CnvtBase2("110010000101011001111",16,2) = ' + CnvtBase2('110010000101011001111',2,16) ?
+;'CnvtBase2("110010000101011001111",16,2,1) = ' + CnvtBase2('110010000101011001111',2,16,1) ?
+;'CnvtBase2($T2,10,16,1) = ' + CnvtBase2($T2,10,16,1) ?
+;'CnvtBase2($T2,10,16) = ' + CnvtBase2($T2,10,16) ?
+;'CnvtBase2(2147483647,10,16) = ' + CnvtBase2(2147483647,10,16) ?
+;'CnvtBase2(2147483647,10,16,0,1) = ' + CnvtBase2(2147483647,10,16,0,1) ?
+;'CnvtBase2(2147483647,10,16,1,1) = ' + CnvtBase2(2147483647,10,16,1,1) ?
+;'CnvtBase2(2147483647,10,32) = ' + CnvtBase2(2147483647,10,32) ?
+;'Using CnvtBase2 to convert 4500 seconds to H:M:S' ?
+;'CnvtBase2(4500,10,60,1) = ' + CnvtBase2(4500,10,60,1) ?
+;'Converting 4:15:30 to seconds...' ?
+;'CnvtBase2("4:15:30",60,10) = ' + CnvtBase2('4:15:30',60,10) ?
+;EXIT
+;;Console displays (from examples)
+;;CnvtBase2(0,10,16) = 0
+;;CnvtBase2(0,10,16,1) = 0
+;;CnvtBase2(0,10,16,1,1) = 0
+;;CnvtBase2("190ACF",16,2) = 110010000101011001111
+;;CnvtBase2("190ACF",16,2,1) = 110010000101011001111
+;;CnvtBase2("190ACF",16,2,1,1) = 1:1:0:0:1:0:0:0:0:1:0:1:0:1:1:0:0:1:1:1:1
+;;CnvtBase2("110010000101011001111",16,2) = 190ACF
+;;CnvtBase2("110010000101011001111",16,2,1) = 1:9:0:10:12:15
+;;CnvtBase2(-190,10,16,1) = -11:14
+;;CnvtBase2(-190,10,16) = -BE
+;;CnvtBase2(2147483647,10,16) = 7FFFFFFF
+;;CnvtBase2(2147483647,10,16,0,1) = 7:F:F:F:F:F:F:F
+;;CnvtBase2(2147483647,10,16,1,1) = 7:15:15:15:15:15:15:15
+;;CnvtBase2(2147483647,10,32) = 1:31:31:31:31:31:31
+;;Using CnvtBase2 to convert 4500 seconds to H:M:S
+;;CnvtBase2(4500,10,60,1) = 1:15:0
+;;Converting 4:15:30 to seconds...
+;;CnvtBase2("4:15:30",60,10) = 15330
+;--------------------------------------------------------------------------------
+FUNCTION CnvtBase2($vNum,$iOB,$iNB,OPTIONAL $bNoHex, OPTIONAL $bForceSep)
+   ; Generalized base conversion.
+   ; SYNTAX: CnvtBase2(number or array,oldbase,newbase,[NoHex])
+   ; Number=number (base 2-16 only) or array of digits w/MSD in
+   ; element 0
+   ; Oldbase=integer specifying the base of the supplied number
+   ; Newbase=integer specifying the base to convert that number to
+   ; NoHex=boolean true to use only characters 0-9 for return values
+   ; ForceSep=boolean true to always separate digits with colons
+   ; RETURNS: A string. If highest digit > 9 (or F if HEX allowed),
+   ; or ForceSep is true, the digits will be delimited with colons
+   DIM $sDigits,$sSign,$sTmp,$sDigit,$sBx,$sSep
+   DIM $iPos,$iDigVal,$iB10,$iPlcNum,$i,$iLen ; $iB10=base 10 value
+;begin
+   $iOB=0+$iOB $iNB=0+$iNB
+   IF $iOB < 2 OR $iNB < 2 EXIT -1 ENDIF
+   ; Make vNum an array if necessary
+   IF VarType($vNum) < 8192
+      IF InStr($vNum,':') > 0
+         $vNum = Split($vNum,':')
+      ELSE
+         $sTmp = '' + $vNum
+         $iLen = Len($sTmp)
+         REDIM PRESERVE $vNum[$iLen-1]
+         FOR $i = 1 TO $iLen
+            $vNum[$i - 1] = SubStr($sTmp,$i,1)
+         NEXT
+      ENDIF
+   ENDIF
+   IF $iNB > 16 OR ($iNB > 10 AND $bNoHex) OR $bForceSep
+      $sSep = ':' 
+   ELSE 
+      $sSep = ''
+   ENDIF
+   $iPos=0 $iDigVal=0 $iB10=0 $i=0
+   $vRemain='' $sBx='' $sSign='' $sDigit=''
+   $sDigits='0123456789ABCDEF'
+   $iLen=UBound($vNum)
+   ; Preserve the sign, if supplied
+   IF $vNum[0] = '-' OR $vNum[0] = '+'
+      $sSign = $vNum[0]
+      FOR $i = 1 TO $iLen
+         $vNum[$i-1] = $vNum[$i]
+      NEXT
+      REDIM PRESERVE $vNum[$iLen - 1]
+      $iLen=UBound($vNum)
+   ENDIF
+   $iPlcNum  = 1
+   $iPos     = 0
+   WHILE $iPos <= $iLen ; Convert to base 10
+      $sDigit = '' + $vNum[$iLen-$iPos]
+      IF Len($sDigit) = 1
+         $iDigVal = InStr($sDigits,$sDigit) - 1
+      ELSE
+         $iDigVal = 0 + $sDigit
+      ENDIF
+      IF $iDigVal > ($iOB - 1) EXIT -1 ENDIF
+      $iB10    = 0 + $iB10 + ($iDigVal * $iPlcNum)
+      $iPlcNum = $iPlcNum * $iOB
+      $iPos    = $iPos + 1
+   LOOP
+   $iPos=0
+   WHILE $iB10 > 0 ; Convert to new base
+      $vRemain = $iB10 - (($iB10 / $iNB) * $iNB)
+      IF $bNoHex OR $vRemain > 15
+         $sBx = $sSep + $vRemain + $sBx
+      ELSE
+         $sBx = $sSep + SubStr($sDigits,$vRemain+1,1) + $sBx
+      ENDIF
+      $iPos = $iPos + 1
+      $iB10 = $iB10 / $iNB
+   LOOP
+   IF Len($sBx) > 1 AND $sSep = ':' $sBx = SubStr($sBx,2) ENDIF
+   IF $sSign <> '' ; Add the sign back in
+      $sBx = $sSign + $sBx
+   ENDIF
+   IF $sBx = '' $sBx='0' ENDIF
+   $CnvtBase2 = $sBx
+   EXIT 0
+ENDFUNCTION
+
+;-----------------------------------------------------------------------
+; FMT($sText, $sMinMax, OPTIONAL $iCtrl, OPTIONAL $sPad)
+;-----------------------------------------------------------------------
+;Function:  
+;   Fmt
+;Category:  
+;   String & Array
+;Action:  
+;   Given a string and formatting codes, returns a formatted string.
+;Syntax  
+;   Fmt(String, MinMax [,Control] ,[Pad])
+;Parameters:  
+;   Name Type  Optional  Description 
+;   Control String  Optional  An integer sum of the following options (1-128 are internal): 1 - Left justify (right is default) 2 - Center justify (right is default - overrides 1) 4 - Pad with combination Tabs/spaces (spaces only is default) 8 - Reserved 16 - Reserved 32 - Reser 
+;   Pad String  Optional  Padding character(s) to use. Default is space. 
+;   String String  Required  Any expression that evaluates to a string or a type that can be directly converted to a string. 
+;   MinMax String  Required  A *string* in the format "MIN[.MAX" where MIN is a number giving the minimum length of the returned string, and .MAX is the maximum length of the returned string. Ex. "20.20" or "80" or ".30".  
+;Remarks:  
+;   This is a huge help when formatted output is desired... i.e.
+;   columns of numbers or text like this. I kept the function name as short as possible, as it is my experience that it may be used repeatedly. This helps keep program lines managable.
+;   This function has been rewritten with more flexibility and with better control of UDF dependencies.* If you are using the old function, check your syntax before substituting functions.
+;   * Essentially, what I did was to keep the core formatting
+;   internal to the function and use calls to other UDF's for
+;   the fancier stuff that may or may not be needed. This keeps
+;   the function reasonably small.
+;Returns:  
+;   The formatted string.
+;Dependencies:
+;   None , UNLESS currency , number separator , or currency manipulation is required.
+;Examples:   
+;   The following is a call to a file containing the following UDF's:
+;   Flip_Dec()
+;   Flip_Currency()
+;   Flip_NumSep()
+;   CALL 'd:\util\kss\UDF_Flip_Fun.kix'
+;   ?
+;   The following code is pretty complex because I'm not only formatting the
+;   string, but I'm supplying quotes for clarity, then formatting THAT output
+;   for clarity. However, it demonstrates the flexibility of Fmt. I encourage
+;   anyone trying out this UDF to play with the "formatting fun" example code
+;   to see how easy it is to build beautifully formatted output with Fmt.
+;$Q=Chr(34)
+;$Str = "Hello World"
+;"String supplied to examples 1-5 is: " + $Str ?
+;"Example 01: " + Fmt($Q+Fmt($str,"")+$Q,30,1,".")       + " No formatting specified." ?
+;"Example 02: " + Fmt($Q+Fmt($str,"20",0)+$Q,30,1,".")   + " Min=20, No Max, No Options." ?
+;"Example 03: " + Fmt($Q+Fmt($str,"20",1)+$Q,30,1,".")   + " Min=20, No Max, Left Justify." ?
+;"Example 04: " + Fmt($Q+Fmt($str,"22",2)+$Q,30,1,".")   + " Min=22, No Max, Center." ?
+;"Example 05: " + Fmt($Q+Fmt($str,"20.5",1)+$Q,30,1,".") + " Min=20, Max=5, Left Justify." ?
+;"Number supplied to examples 6-14 is 1024. Min=8, No Max." ?
+;"Example 06: " + Fmt($Q+Fmt(1024,"8",256)+$Q,30,1,".")  + " Separation characters." ? ;*
+;"Example 07: " + Fmt($Q+Fmt(1024,"8",512)+$Q,30,1,".")  + " Decimal." ? ;*
+;"Example 08: " + Fmt($Q+Fmt(1024,"8",1024)+$Q,30,1,".") + " Currency."? ;*
+;"Example 09: " + Fmt($Q+Fmt(1024,"8",768)+$Q,30,1,".")  + " Separation and decimal." ? ;*
+;"Example 10: " + Fmt($Q+Fmt(1024,"8",1536)+$Q,30,1,".") + " Decimal and currency." ? ;*
+;"Example 11: " + Fmt($Q+Fmt(1024,"8",1892)+$Q,30,1,".") + " Separation, decimal and currency." ? ;*
+;"Example 12: " + Fmt($Q+Fmt(1024,"8",1280)+$Q,30,1,".") + " Separation and currency." ? ;*
+;"Example 13: " + Fmt($Q+Fmt(1024,8,257)+$Q,30,1,".")    + " Separation and Left-Justify." ? ;*
+;"Example 14: " + Fmt($Q+Fmt(1024,8,1)+$Q,30,1,".")      + " Left-Justify." ?
+;
+;$strTest = "1234567890" ?
+;FOR $x = 1 TO 10
+;   "The time is @TIME: Your Enron stock value is:" + 
+;   Fmt(SubStr($strTest,1,11 - $x),16,1892) ? ; *
+;   SLEEP 1
+;NEXT
+; * These require external UDF's. See documentation above.
+;
+; If you really want to have some fun, uncomment the following code.
+;
+;$str = " Formatting Fun! "
+;FOR $x = 1 TO 80
+;  Fmt($str,"" + $x + "." + $x) ?
+;NEXT
+;FOR $x = 80 TO 1 STEP -1
+;  Fmt($str,"" + $x + "." + $x) ?
+;NEXT
+;FOR $x = 1 TO 80
+;  Fmt($str,"" + $x + "." + $x,2,"*") ?
+;NEXT
+;FOR $x = 80 TO 1 STEP -1
+;  Fmt($str,"" + $x + "." + $x,2,"*") ?
+;NEXT
+;FOR $x = 1 TO 80
+;  Fmt(Fmt($str,"" + $x + "." + $x,2,"*"),80,2) ?
+;NEXT
+;FOR $x = 80 TO 1 STEP -1
+;  Fmt(Fmt($str,"" + $x + "." + $x,2,"*"),80,2) ?
+;NEXT
+;FOR $x = 1 TO 80
+;  Fmt(Fmt($str,"" + $x + "." + $x,2,"<*>"),"" + (80 - $x) + ".80",2,"<*>") ?
+;NEXT
+;FOR $x = 80 TO 1 STEP -1
+;  Fmt(Fmt($str,"" + $x + "." + $x,2,"<*>"),"" + (80 - $x) + ".80",2,"<*>") ?
+;NEXT
+;End fun code.
+;
+; Console output from everything except fun code:
+;String supplied to examples 1-5 is: Hello World
+;Example 01: "Hello World"................. No formatting specified.
+;Example 02: "         Hello World"........ Min=20, No Max, No Options.
+;Example 03: "Hello World         "........ Min=20, No Max, Left Justify.
+;Example 04: "     Hello World      "...... Min=22, No Max, Center.
+;Example 05: "Hello"....................... Min=20, Max=5, Left Justify.
+;Number supplied to examples 6-14 is 1024. Min=8, No Max.
+;Example 06: "   1,024".................... Separation characters.
+;Example 07: "   10.24".................... Decimal.
+;Example 08: "   $1024".................... Currency.
+;Example 09: "   10.24".................... Separation and decimal.
+;Example 10: "  $10.24".................... Decimal and currency.
+;Example 11: "  $10.24".................... Separation, decimal and currency.
+;Example 12: "  $1,024".................... Separation and currency.
+;Example 13: "1,024   ".................... Separation and Left-Justify.
+;Example 14: "1024    ".................... Left-Justify.
+;
+;The time is 09:30:25: Your Enron stock value is:  $12,345,678.90
+;The time is 09:30:26: Your Enron stock value is:   $1,234,567.89
+;The time is 09:30:28: Your Enron stock value is:     $123,456.78
+;The time is 09:30:29: Your Enron stock value is:      $12,345.67
+;The time is 09:30:30: Your Enron stock value is:       $1,234.56
+;The time is 09:30:31: Your Enron stock value is:         $123.45
+;The time is 09:30:32: Your Enron stock value is:          $12.34
+;The time is 09:30:33: Your Enron stock value is:           $1.23
+;The time is 09:30:34: Your Enron stock value is:            $.12
+;The time is 09:30:35: Your Enron stock value is:            $.01
+;
+FUNCTION Fmt($sText, $sMinMax, OPTIONAL $iCtrl, OPTIONAL $sPad)
+   ; $sText is an integer or string.
+   ; $sMinMax must a string formatted as follows: "[MinLen][.MaxLen]"
+   ; $sPad is a string of one or more characters to use as padding.
+   ; $iCtrl is one or more of the following options (additive).
+   ; 1=Left-justify, 2=Center, 4=TABs and spaces
+   ; 256=Add or remove separation characters
+   ; 512=Add decimal in 100's place or remove any decimal chararacter
+   ; 1024=Add or remove currency symbol
+   ; NOTE: The first 8 bits (1 - 128) are built in to FMT(). Bits 9+ (256+ decimal)
+   ; require external UDF's
+   ; If the length of the integer or string is less than MinLen, it will be 
+   ; right-justified and padded with spaces, unless specified otherwise by intControl.
+   ; If .MaxLen is supplied, the string (plus any padding added) will be 
+   ; truncated at that length.
+   ; Returns: Formatted string
+   ; Dependencies: Contitional dependencies on Flip_NumSep(), Flip_Currency() and
+   ; Flip_Dec()
+   IF VarType($sText) < 2 OR VarType($sText) > 8 RETURN ENDIF
+   DIM $sPadding, $bTabs, $sLPad, $sRPad
+   DIM $iMin, $iMax, $iPadLen, $iFmtLen, $iTabWid, $iCharWid, $i, $j, $k
+;begin
+   $iTabSpc=0 $iFmtLen=0 $iPadLen =0 $iTabWid=8 $iCharWid=1
+   $sText    = '' + $sText
+   $sMinMax  = '' + $sMinMax
+   $iCtrl    = 0 + $iCtrl
+   $sPad     = '' + $sPad
+   IF $sPad = '' $sPad = Chr(32) ENDIF
+   IF $iCtrl & 4 $sPad = Chr(9) ENDIF ; Horizontal Tab
+   ;Calculate the width of the pad string
+   FOR $i = 1 TO Len($sPad)
+       IF Asc(SubStr($sPad,$i,1)) = 9
+           $iPadLen = $iPadLen + ($iTabWid * (1 + ($iCtrl & 2)/2))
+       ELSE
+           $iPadLen = $iPadLen + ($iCharWid * (1 + ($iCtrl & 2)/2))
+       ENDIF
+   NEXT
+   ; Parse MinMax
+   IF InStr($sMinMax,".") > 0
+       $iMin = Val(SubStr($sMinMax,1,InStr($sMinMax,".") - 1))
+       $iMax = Val(SubStr($sMinMax,InStr($sMinMax,".") + 1))
+   ELSE
+       $iMin = Val($sMinMax)
+       IF $iMin = 0 $iMin = Len($sText) ENDIF
+       $iMax = 32000
+   ENDIF
+   ; UDF dependencies.
+   IF $iCtrl & 0256 $sText = Flip_NumSep($sText) ENDIF
+   IF $iCtrl & 0512 $sText = Flip_Dec($sText) ENDIF
+   IF $iCtrl & 1024 $sText = Flip_Currency($sText) ENDIF
+   ; After pre-processing, truncate string to $iMax length
+   IF $iMax < Len($sText) $sText = SubStr($sText,1,$iMax) ENDIF
+   ; Calculate the width of the supplied string including TABS
+   FOR $i = 1 TO Len($sText)
+       IF Asc(SubStr($sText,$i,1)) = 9
+           $iFmtLen = $iFmtLen + $iTabWid
+       ELSE
+           $iFmtLen = $iFmtLen + 1
+       ENDIF
+   NEXT
+   IF $iFmtLen < $iMin
+       $j = $iMin - ($iFmtLen + $iPadLen)
+       $k = 0
+       FOR $i = 0 TO $j STEP $iPadLen ; Number of sPad strings needed
+           $sPadding = $sPadding + $sPad
+           $k = $k + $iPadLen
+       NEXT
+       $iFmtLen = $iFmtLen + $k
+       $sLPad=$sPadding $sRPad=$sPadding
+       FOR $i = 1 TO ($iMin - $iFmtLen) ; Fill remainder with even number of spaces
+           IF $iCtrl & 2
+               IF $i & 1 
+                   $sRPad = $sRPad + ' '
+               ELSE 
+                   $sLPad = ' ' + $sLPad 
+               ENDIF
+           ELSE
+               $sPadding = $sPadding + ' '
+           ENDIF
+       NEXT
+   ENDIF
+   IF $iCtrl & 1 ; LJust
+       $Fmt = $sText + $sPadding
+   ELSE  ; RJust
+       $Fmt = $sPadding + $sText
+   ENDIF
+   IF $iCtrl & 2 ; Center
+       $Fmt = $sLPad + $sText + $sRPad
+   ENDIF
+   ;Recalculate the total length of the string.
+   $iFmtLen = 0
+   FOR $i = 1 TO Len($Fmt)
+       IF Asc(SubStr($Fmt,$i,1)) = 9
+           $iFmtLen = $iFmtLen + $iTabWid
+       ELSE
+           $iFmtLen = $iFmtLen + 1
+       ENDIF
+   NEXT
+   FOR $i = 1 TO ($iMin - $iFmtLen) ; Fill remainder with spaces
+       $Fmt = $Fmt + ' '
+   NEXT
+   $Fmt = SubStr($Fmt,1,$iMax)
+ENDFUNCTION ; Fmt()
+
+;--------------------------------------------------------------------
+; PadStr($Input, $Pad, $Length, optional $PadSide)
+;--------------------------------------------------------------------
+;Category:  String & Array
+;Action:  Left pad or Right pad a string with specified character(s) to a specified overall length.
+;Syntax  
+;   PadStr($Input,$Pad,$Length)
+;Parameters:  
+;   Name Type  Optional  Description 
+;   $Pad String  Required  One or more characters to be added to the Left or Right of the string $Input. 
+;   $Length Numeric  Required  The length to which $Input with padding will be trimmed before it is returned through the function. 
+;   $PadSide String  Required  String [L|R] Default is "L" 
+;   $Input String  Required  String value to which padding is added. 
+;Remarks:  
+;   The $Pad can be one or more characters. If the Padding exceeds the specified maximum length then the resulting string is trimmed preserving the original data.
+;Returns:  
+;   String
+;Dependencies:  
+;   None
+;Examples:  
+;   PadStr("401","0",8) result "00000401"
+;   PadStr("401","0",8,"R") result "40100000"
+;--------------------------------------------------------------------
+Function PadStr($Input, $Pad, $Length, optional $PadSide)
+   Dim $i, $x
+   $PadStr = ""
+   $Input = "" + $Input
+   $Pad = "" + $Pad
+   $Length = INT($Length)
+   If $PadSide="" or Len($PadSide)>1 or Instr("LR",$PadSide)= 0
+       $PadSide = "L"
+   Endif
+   
+   $x = Len($Input)
+   
+   For $i=$x to $Length - 1 Step Len($Pad)
+       If $PadSide = "L"
+           $Input = $Pad + $Input
+       Else
+           $Input = $Input + $Pad
+       Endif
+   Next
+   If $PadSide = "L"
+       $Input = Right($Input, $Length)
+   Else
+       $Input = Left($Input, $Length)
+   Endif
+   $PadStr = $Input
+   Exit 0
+Endfunction
+
+;--------------------------------------------------------------------
+;  Like($string1, $string2, optional $wc, optional $sc) 
+;--------------------------------------------------------------------
+;  Function:      Like
+;  Author:        Eric Macintosh (maciep)
+;  Syntax:        Like($string1, $string2, Optional $wc, Optional $sc)
+;  Action:        Compares two strings using wildcards.  
+;  Parameters:    
+;                 $string1-  The string to be compared
+;                 $string2-  The string containing the wildcards to compare against
+;                 $wc-       Optional, multi-char wildcard (defaults to "*")
+;                 $sc-       Optional, sing-char wildcard (defaults to "?")
+;
+;  Returns:       Like() returns 1 if $string1 is like $string2 otherwise it returns 0
+;
+;  Dependencies:  
+;                 KiXtart 4.02 (I think)
+;                 External udf search()
+;
+;  Remarks:
+;                 Like has limitations based on the instr() function.  The limitations will effect 
+;                 only those comparisons which have the sing-char ("?") wildcard in $string2.  Limitations 
+;                 are made clear in the "Examples" section below
+;
+;  Examples:  
+;                 Like("kixtart rules", "kix*") returns 1     
+;                 Like("kixtart rules", "*ta?t*") returns 1
+;                 Like("kixtart rules", "*x?a*l?s")  returns 1 
+;                 Like("kixtart rules", "*t?t*")   returns 0
+;                 Like("kixtart rules", "ki*r?es") returns 0
+;                 
+;                 Limitations - instr returns the first instance it finds. Therefore, the following 
+;                               will find the 'r' in "kixtart" which will result in result in a 
+;                               comparison of "t rules" and "?les" which returns 0 even though it
+;                               logically makes sense that it should return 1.  So be careful and I  
+;                               will work on correcting this.
+;
+;                 Like("kixtart rules", "*r?les") RETURNS 0
+;--------------------------------------------------------------------
+function Like($string1, $string2, optional $wc, optional $sc) 
+;begin  
+   if(NOT $wc)
+      $wc = "*"
+   endif
+
+   if(NOT $sc)
+      $sc = "?"
+   endif
+   
+   ; base case
+   if $string2 = "" or $string2 = $wc or ($string2 = $sc and len($string1) = 1)
+     $Like = 1
+     return
+   endif
+   if($string2 = $sc and len($string1) <> 1)
+      $Like = 0
+      return
+   endif
+
+   ; different places we may want to look for the substring.  Default to exact
+   $anyWhere = 0
+   $exact = 1
+   $front = 2
+   $back = 3
+   
+   $case = $exact
+
+   $j = 1
+   $subString = ""
+   
+   ;if the first character is the single character wildcard
+   ;remove the first character from both strings and
+   ;call Like() again
+   if(substr($string2, 1, 1) = $sc)
+      $string2 = substr($string2, 2, len($string2) -1)
+      $string1 = substr($string1, 2, len($string1) -1)
+      $Like = Like($string1, $string2, $wc, $sc)
+      return
+   endif
+   
+   
+   ;if the first two characters of the string are 
+   ;the multi-char wildcard and the sing-char wildcard (i.e. "*?string")
+   ;then that together represents 1 or more characters.  
+   if(substr($string2, 1, 1) = $wc and substr($string2, 2, 1) = $sc) 
+      if(len($string2) = 2 and $string1 = "")
+         $Like = 0
+         return
+      endif
+      $string2 = $wc + substr($string2, 3, len($string2) - 2)
+      $string1 = substr($string1, 2, len($string1) -1)
+      $Like = Like($string1, $string2, $wc, $sc)
+      return
+   endif
+         
+
+   ;if the first character of the string is the
+   ;multi-char wildcard then set the appropriate case
+   ;and move onto the next character
+
+   if(substr($string2, 1, 1) = $wc)
+      $j = 2                        
+      $case = $back                 
+   endif
+   
+   ;Build the search string
+   $curChar = substr($string2, $j, 1)
+   while($curChar <> "" And $curChar <> $wc And $curChar <> $sc)   ; build the substring until we hit a wildcard
+      $subString = $subString + $curChar                           ; or until we get to the end of $string2
+      $j = $j + 1
+      $curChar = substr($string2, $j, 1)                       ; building the substring
+   loop
+   
+   if($curChar = $wc or $curChar = $sc)  ; there was a wildcard found in $string2
+      if($case = $back)
+        $case = $anyWhere  ; one percent in front and one in back, ex: *string2*
+      endif
+      if($case = $exact)  ; one percent in back, ex: string2*
+        $case = $front    
+      endif
+   endif
+
+   $inThere = search($string1, $subString, $case) ; search for substring given where to look for it
+   
+   if(NOT $inThere)
+     $Like = 0
+     return
+   endif
+   $string1 = substr($string1, $inThere + len($subSTring))            
+   $string2 = substr($string2, $j)                                     
+   $Like = Like($string1, $string2, $wc, $sc)
+   
+endfunction   
+
+;--------------------------------------------------------------------
+; Search($searchIn, $searchFor, $searchHow)
+;--------------------------------------------------------------------
+function Search($searchIn, $searchFor, $searchHow)
+;begin
+   $posInString = instr($searchIn, $searchFor)
+   if ($searchHow = 0)                         ; look anywhere for $searchFor in $searchIn
+      $search = $posInString
+   endif
+
+   if ($searchHow = 1)                         ; must be an exact match (no wildcards)
+      if ($searchIn = $searchFor) ; $posInString <> 0 and len($searchIn) = len($searchFor))
+         $search = $posInString
+      else
+         $search = 0
+      endif
+   endif
+
+   if ($searchHow = 2)                         ; $searchIn must start with $searchFor
+      if($posInString = 1)
+         $search = $posInstring
+      else
+         $search = 0
+      endif
+   endif
+
+   if ($searchHow = 3)                         ; $searchIn must end with $searchFor
+      if(substr($searchIn, len($searchIn) - len($searchFor) + 1) = $searchFor) 
+         $search = len($searchIn) - len($searchFor) + 1
+      else
+         $search = 0
+      endif
+   endif
+endfunction
+
+;--------------------------------------------------------------------------------
+;FUNCTION RegASCIItoHEX
+;
+;AUTHOR Bryce
+;
+;ACTION Converts a ASCII string to a HEX string that can be written to the registry.
+;
+;SYNTAX RegASCIItoHEX($string)
+;
+;PARAMETERS String - string of ASCII to be converted
+;
+;RETURNS the HEX version of the given ASCII string
+;
+;DEPENDENCIES none.
+;
+;EXAMPLE
+; $categories = "Things;More things;And even more things!!"
+; ? RegASCIItoHEX($categories)
+;
+;--------------------------------------------------------------------------------
+Function RegASCIItoHEX($data)
+   dim $return, $i
+   $return = ""
+
+   for $i = 1 to len($data)
+      $return = $return + dectohex(asc(substr($data,$i,1)))+ "00"
+   next
+   $return = lcase($return) + "0000"
+   $regASCIItoHex = $return
+endfunction
+
+;--------------------------------------------------------------------------------
+;FUNCTION RegHEXtoASCII
+;
+;AUTHOR Bryce
+;
+;ACTION Converts a registry HEX string key to an ASCII string
+;
+;SYNTAX RegHEXtoASCII($string)
+;
+;PARAMETERS String - string of HEX to be converted
+;
+;RETURNS the ASCII version of the given HEX string
+;
+;DEPENDENCIES none.
+;
+;EXAMPLE
+; $xpkey = "HKEY_CURRENT_USER\Software\Microsoft\Office\10.0\Outlook\Categories"
+; ? "The list of Categories in outlook 2002"
+; ? RegHEXtoASCII(readvalue($xpkey,"Masterlist"))
+;
+;--------------------------------------------------------------------------------
+Function RegHextoAscii($data)
+   dim $return, $i, $hex
+   for $i = 1 to len($data) step 2
+      $hex = "&" + substr($data,$i,2)
+      $return = $return + chr(val($hex))
+   next
+   $reghextoascii = $return
+endfunction
+
+;--------------------------------------------------------------------------------
+; Function Replace()
+;
+; Author      Randy Watson (aerathistorm@yahoo.com)
+;
+; Action      Replaces first or all occurrences of one string with another
+;
+; Syntax      Replace(Source, SearchString, ReplaceString, First, CaseSensitive)
+;
+; Parameters      
+;         Source
+;            String to search
+;         SearchString
+;            String being replaced
+;         ReplaceString
+;            New string
+;         First (Optional)
+;            Pass the value 1 to replace only first occurrence. Default is replace all.
+;         CaseSensitive (Optional)
+;            Pass the value 1 to turn on case sensitivity. Default is off.
+;
+; Returns      
+;         Returns the new string.
+;
+; Remarks      
+;         
+;         
+; Dependencies      
+;         None
+;
+; Example(s)
+;         Replace all occurences of a non case sensative string with another:   
+;$StringSource = "Three Apples + four apples makes seven apples"
+;$StringSearch = "apple"
+;$StringReplace = "orange"
+;$StringReplaced = Replace($StringSource, $StringSearch, $StringReplace)
+;? "Original string : $StringSource"
+;? "New string : $StringReplaced"
+;         Replace only the first case sensative occurrence:
+;$StringReplaced = Replace($StringSource, $StringSearch, $StringReplace, 1, 1)
+;? "Original string : $StringSource"
+;? "New string : $StringReplaced"; Source:
+;Exit
+;--------------------------------------------------------------------------------
+
+;Новая функция REPLACE ("stringtoreplacein", "stringtoreplace", "stringtoreplacewith", offset, count)
+
+Function ReplaceSTR($SourceString, $SearchString, $ReplaceString, Optional $First, Optional $CaseSensitive)
+   Dim $String1
+   Dim $String2
+   Dim $Finished   $Finished = 0
+   $Counter = 0
+   $String1 = $SourceString
+   If $CaseSensitive
+      $PreviousState = SetOption("CaseSensitivity", "On")
+   EndIf
+   While Not $Finished
+      $String2 = $String1
+      $Location = InStr($String1, $SearchString)
+      If $Location > 0
+         $String1 = Substr($String1, 1, $Location - 1) + $ReplaceString + Substr($String1, $Location + Len($SearchString), Len($SourceString) - $Location + Len($SearchString) + 1)
+      Else
+         $Finished = 1
+      EndIf
+      If $First
+         $Finished = 1
+      EndIf
+      If $String1 = $String2
+         $Finished = 1
+      EndIf
+   Loop
+   $Replace = $String1
+   $Nul = SetOption("CaseSensitivity", $PreviousState)
+EndFunction
+
+;--------------------------------------------------------------------------------
+; Squeeze() - Remove all occurrences of a string from within a string 
+; 
+;
+;Squeeze()
+;
+;Action:
+;
+;Remove all occurrences of a string from within another string
+;
+;Syntax:
+;
+;Squeeze("string1","string2")
+;
+;Parameters:
+;
+;String1 (Required) - The string to squeeze
+;
+;String2 (Required) - The string to remove (squeeze) from string1
+;
+;Returns:
+;
+;The squeezed string
+;
+;Remarks:
+;
+;This function has no pratical application what-so-ever
+;
+;Dependencies:
+;
+;KiXtart 4.0 (final)
+;
+;Example(s):
+;
+;I don't know, this function is older than my grandmother, so
+;one could do this:
+;
+;
+;code: 
+;--------------------------------------------------------------------------------
+;
+;? squeeze("142.123.123.28",".") ; gives 14212312328
+; 
+;? squeeze("1,2,3,4,5,6",",")    ; gives 123456
+; 
+;? squeeze(squeeze("orange juice","range "),"uice")+" did it" ; gives ?
+; 
+;? squeeze("ABAABBABAA","ABA")    ; gives ?
+;
+;--------------------------------------------------------------------------------
+function squeeze($string1,$string2)
+   while instr($string1,$string2)
+      $string1=substr($string1,1,instr($string1,$string2)-1)+substr($string1,instr($string1,$string2)+len($string2))
+   loop
+   $squeeze = $string1
+endfunction
+
+;--------------------------------------------------------------------------------
+;FUNCTION      StringCount()
+;
+;ACTION        Returns the number of occurances of a string in another string
+;
+;AUTHOR        Jens Meyer (sealeopard@usa.net)
+;
+;VERSION       1.2
+;
+;KIXTART       4.12
+;
+;SYNTAX        COUNT = STRINGCOUNT(SEARCHSTRING, FINDSTRING)
+;
+;PARAMETERS    SEARCHSTRING
+;              String to search in
+;
+;              FINDSTRING
+;              String to search for
+;
+;RETURN        number of occurances of a string in another string
+;
+;REMARKS       based on a idea from Will S. (http://www.kixtart.org/board/ultimatebb.cgi?ubb=get_topic;f=12;t=000215)
+;
+;DEPENDENCIES  none
+;
+;EXAMPLE       $count=StringCount('This is a test to search for "is"','is')
+;
+;KIXTART BBS   http://www.kixtart.org/cgi-bin/ultimatebb.cgi?ubb=get_topic;f=12;t=000216
+;
+;--------------------------------------------------------------------------------
+FUNCTION StringCount($searchstring, $findstring, optional $word)
+  $stringcount=split($searchstring,$findstring)
+  $stringcount=ubound($stringcount)
+endfunction
+
+;--------------------------------------------------------------------------------
+; Strip() - strip leading or trailing character from string 
+;Author      Jan.Schulenburg@tui.nl
+;
+;Function   Strip
+;
+;Parameters1:   String, required, string to check.
+;      2: Char, optional, character to delete from string.
+;      3: Mode, optional, all: deleting all given characters
+;      lt : deleting leading and traling characters (default)
+;
+;Remarks   This function deletes every occurrence of characters of a string.
+;      If no char is given, ' ' wil be deleted. If $Mode is all, all chars
+;      are deleted.
+;
+;Returns   String without leading and trailing chars, or without all given
+;      characters. @Error=0 if succesfull, 1 if failed.
+;
+;Dependencies   none
+;
+;Example(s)   $RC=Strip(' hello, this is a test ',' ')
+;      $RC=Strip(' hello, this is a test ',' ','all')
+;      $RC=Strip(' hello, this is a test ','s')
+;      $RC=Strip('*hello, this is a test*','*')
+;
+;--------------------------------------------------------------------------------
+Function Strip($String,Optional $Char, Optional $Mode)
+   Dim $Cnt,$Start,$End
+
+   ; Check parameters..
+   If Not VarType($String) Exit(1)    EndIf
+   If Not VarType($Char)   $Char=' '  EndIf
+   If Not VarType($Mode)   $Mode='lt' EndIf
+
+   $Strip=''
+   Select
+     Case $Mode='lt'
+        ; only leading and trailing chars..
+        For $Cnt=1 to Len($String)
+         If SubStr($String,$Cnt,1)<>$Char $Start=$Cnt $Cnt=Len($String)+1 EndIf
+      Next
+        For $Cnt=Len($String) to 1 Step -1
+         If SubStr($String,$Cnt,1)<>$Char $End=$Cnt+1 $Cnt=0 EndIf
+      Next
+      $Strip=SubStr($String,$Start,$End-$Start)
+
+     Case $Mode='all'
+        ; all chars..
+        For $Cnt=1 to Len($String)
+         If SubStr($String,$Cnt,1)<>$Char $Strip=$Strip+SubStr($String,$Cnt,1) EndIf
+      Next
+     Case 1
+      $Strip=$String
+   EndSelect
+EndFunction
+
+;--------------------------------------------------------------------------------
+; StripCopies() - Strips multipile instances of a string and integer from an array 
+;Function      StripCopies()
+;
+;Author         Vig (ag4634@hotmail.com)
+;
+;Action         Strips multipile instances of a string and integer
+;         out of an array
+;
+;Syntax         StripCopies($Array)
+;
+;Version 1.0
+;
+;Parameters      Array
+;         The array in which you want to strip copies from
+;
+;Remarks      It may be ugly but it works!
+;
+;Returns      The original array minus copies in the original array
+;
+;Dependencies      None
+;
+;KixTart Ver      4.02
+;
+;Example      Dim $test[13]
+;         $test1 = "2","3","4","1","2","3","4","2","3","4","1","2","3","4"
+;         $test1 = stripcopies($test1)
+;            
+;         For Each $1 in $test1
+;         $1" "
+;         Next   
+;
+;
+;         Returns: 2 3 4 1
+;
+;--------------------------------------------------------------------------------
+Function StripCopies($striArray)
+$on = 1 
+Dim $searArr
+For Each $add in $StriArray 
+   If Ubound($SearArr) = -1
+   ReDim $searArr[0] $SearArr[0] = $add
+   EndIf
+   $counter = 0 
+   While Ubound($SearArr)+1 <> $counter 
+   If $add = $searArr[$counter]
+   $on = 1 
+   EndIf
+   $counter = $counter + 1 
+   Loop
+   $counter = 0 
+   If $on = 0 ReDim preserve $SearArr[Ubound($SearArr)+1] $SearArr[Ubound($SearArr)] = $add EndIf
+   $on = 0
+Next 
+$StripCopies = $SearArr 
+EndFunction
+
+;--------------------------------------------------------------------------------
+; udfSqueeze() - Reduce repeated characters in a string. 
+; FUNCTION:   udfSqueeze()
+;
+; AUTHOR:   Richard Howarth (rhowarth@sgb.co.uk)
+;
+; HISTORY:   18 Jul 2003   RMH   Initial release.
+;
+; ACTION:   Removes repeated characters from a string
+;
+; SYNTAX:   udfString(String, Delimiters, TrimFlag)
+;
+; PARAMETERS:   
+;   String      (MANDATORY) String to remove characters from.
+;   Delimiters   (OPTIONAL)  Characters to squeeze - default is space " "
+;   TrimFlag   (OPTIONAL)  Boolean flag. Trim characters from start and end of string
+;                as well as squeezing.
+;
+; RETURNS:   Squeezed string
+;
+; REMARKS:   If a single delimiter is defined a faster method is used to squeeze the string.
+;      If multiple delimiters are defined they are replaced with the first character
+;      in the delimiter paramater, i.e.
+;         udfSqueeze("5432","123456789") would return "1"
+;      Multiple delimiters are most useful for example when parsing sentences and you
+;      want to split the input up into words, or parsing a file where the fields may
+;      be delimited by both space and tab characters.
+;
+; DEPENDENCIES:   KiXtart 4.00
+; 
+; EXAMPLE:
+;   Example - A sentence parser.
+;   ----------------------------
+;   $sSentence="This is a sentence, which will be tokenised (into words)."
+;   $asWordList=Split(udfSqueeze($sSentence," ,.()","true"))
+;   For $iIndex=0 To Ubound($asWordList)
+;      "Word # " $iIndex+1 " = " $asWordList[$iIndex] ?
+;   Next
+;
+;   Example output:
+;   ---------------
+;   Word # 1 = This
+;   Word # 2 = is
+;   Word # 3 = a
+;   Word # 4 = sentence
+;   Word # 5 = which
+;   Word # 6 = will
+;   Word # 7 = be
+;   Word # 8 = tokenised
+;   Word # 9 = into
+;   Word # 10 = words
+; 
+; SOURCE:
+;--------------------------------------------------------------------------------
+Function udfSqueeze($sSource,Optional $sDelimiters, Optional $bTrim)
+   Dim $iSourceLength   $iSourceLength=0
+   Dim $iIndex      $iIndex=0
+   Dim $iLastGood      $iLastGood=0
+   Dim $bFound      $bFound=0
+;begin   
+   $udfSqueeze = ""
+   
+   ;--------------------------
+   ; Defaults and sanity checks
+   ;--------------------------
+   If $sDelimiters  = "" $sDelimiters = " " EndIf
+   If $bTrim $bTrim = 1  Else $bTrim = 0 EndIf
+   
+   ;----------------------------------------
+   ; High speed squeeze for single characters
+   ;----------------------------------------
+   If Len($sDelimiters)=1
+      $sDelimiters=""+$sDelimiters+$sDelimiters
+      $iIndex=InStr($sSource,$sDelimiters)
+      While $iIndex
+         $sSource=""+SubStr($sSource,1,$iIndex)+SubStr($sSource,$iIndex+2,Len($sSource))
+         $iIndex=InStr($sSource,$sDelimiters)
+      Loop
+      If $bTrim
+         $sDelimiters=SubStr($sDelimiters,1,1)
+         ; -------------
+         ; Trim leading.
+         ; -------------
+         While SubStr($sSource,1,1)=$sDelimiters
+            $sSource=SubStr($sSource,2,Len($sSource))
+         Loop
+         ; --------------
+         ; Trim Trailing.
+         ; --------------
+         $iIndex=Len($sSource)
+         While SubStr($sSource,$iIndex,1)=$sDelimiters
+            $sSource=SubStr($sSource,1,$iIndex-1)
+            $iIndex=Len($sSource)
+         Loop
+      EndIf
+      $udfSqueeze=$sSource
+   Else
+      ;--------------------------------------
+      ;Slower squeeze for multiple characters
+      ;--------------------------------------
+      $iSourceLength=Len($sSource)
+      For $iIndex = 1 To $iSourceLength
+         $cChar=SubStr($sSource,$iIndex,1)
+         If InStr($sDelimiters,$cChar)
+            If $bFound=0 AND ( $iLastGood OR $bTrim=0 )
+               $udfSqueeze=""+$udfSqueeze+SubStr($sDelimiters,1,1)
+            EndIf
+            $bFound=1
+         Else
+            $bFound=0
+            $udfSqueeze=""+$udfSqueeze+$cChar
+            If $bTrim $iLastGood=Len($udfSqueeze) EndIf
+         EndIf
+      Next
+      If $iLastGood $udfSqueeze=SubStr($udfSqueeze,1,$iLastGood) EndIf
+   EndIf
+EndFunction

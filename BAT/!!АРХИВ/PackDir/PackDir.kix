@@ -1,0 +1,26 @@
+; =======================================================================================
+; Unpak.kix
+; =======================================================================================
+   ; $Log = "up.log"
+   ; $Result=RedirectOutput($Log, 1)
+   $Result=RedirectOutput("")
+
+;---------------------------------------------------------------
+; Uses
+;---------------------------------------------------------------
+   if not $KxlDir Call "\\S73FS01\APPInfo\Tools\KxlDir.kxl" endif
+   Call $KxlDir+"\UDF\LUFile.kxl"
+   Call $KxlDir+"\UDF\LUSupport.kxl"
+
+;=======================================================================================
+
+   call $FileParamStr
+
+   PackDir($Param1, $ARC)
+
+   Del $FileParamStr
+
+   $Result=RedirectOutput("")
+
+; end
+

@@ -1,0 +1,120 @@
+;===============================================================
+; LUWord.kxl
+;---------------------------------------------------------------
+; CreateWord()
+; ShowWord($objWord)
+;Title
+;Subject
+;Author
+;Keywords
+;Comments
+;Template
+;Last author
+;Revision number
+;Application name
+;Last print date
+;Creation date
+;Last save time
+;Total editing time
+;Number of pages
+;Number of words
+;Number of characters
+;Security
+;Category
+;Format
+;Manager
+;Company
+;Number of bytes
+;Number of lines
+;Number of paragraphs
+;Number of slides
+;Number of notes
+;Number of hidden Slides
+;Number of multimedia clips
+;Hyperlink base
+;Number of characters (with spaces)
+; $Properties = $objWordDocument.BuiltInDocumentProperties
+; for each $Item in $Properties
+;    LogAdd($Log, $LogFile, "I", $Item.Name+": "+$Item.Value) 
+; next
+;===============================================================
+
+;----------------------------------------------------------------------------
+; CreateWord()
+;----------------------------------------------------------------------------
+function CreateWord()
+;begin
+   $CreateWord = CreateObject("Word.Application")
+endfunction
+
+;----------------------------------------------------------------------------
+; ShowWord($objWordl)
+;----------------------------------------------------------------------------
+function ShowWord($objWord)
+;begin
+   if $objWord
+      $objWord.Visible = TRUE
+   endif
+endfunction
+
+;----------------------------------------------------------------------------
+; PrintDOCFile
+;----------------------------------------------------------------------------
+function PrintDOCFile($FileName)
+;begin
+   $objWord = CreateWord
+   if $objWord
+      $objWordFile = $objWord.documents.open($FileName)
+      $objWordFile.PrintOut
+      $objWord.quit
+   endif
+endfunction
+
+;==============================================================================
+;Function:    Doc2txt()
+;
+;Author:   Lonkero
+;
+;Version:   1.0 (4th of December 2002)
+;
+;Action:   Converts word document to text file
+;
+;Syntax:   Doc2txt("SOURCE", "TARGET")
+;
+;Parameters:
+;      SOURCE   - full path to source file
+;      TARGET   - full path to destination file
+;
+;Returns:
+;      Nothing. check errorcode for errors.
+;
+;      on error errorcodes set:
+;         1 -source does not exist
+;         2 -failed to initialize WORD-object
+;         3 -conversion failed
+;
+;Dependencies:
+;      Word ;)
+;
+;Remarks:
+;      if target file exists, it will be overwritten.
+;      tested with off2k sr-1. no other versions to test on.
+;      some lines are stolen from shawns posts ;)
+;
+;Example:   
+;      if not doc2txt("\\Docuserver\general\eula.doc","%temp%\eula.txt")
+;         "NETWORK EULA:" ?
+;         display "%temp%\eula.txt"
+;      endif
+;==============================================================================
+function doc2txt($_s,$_d)
+   dim $_objW
+;begin
+   if not exist($_s) $doc2txt=1 exit 1 endif
+   if exist($text) del $text endif
+   $objWord = createobject("word.application")
+   if @error $doc2txt=2 exit 2 endif
+   $objWord.documents.open($_s).saveas($_d,5)
+   if @error $doc2txt=3 exit 3 endif
+   $objWord.quit
+endfunction

@@ -1,0 +1,254 @@
+;--------------------------------------------------------------------
+; LUIniFiles.kxl
+;--------------------------------------------------------------------
+; ReadSections   ($IniFile)
+; ReadSections_LU($IniFile)
+; ReadSection    ($IniFile, $Section)
+; ReadSection_LU ($IniFile, $Section)
+; ReadString     ($IniFile, $Section, $Ident, $Default)
+; WriteString    ($IniFile, $Section, $Ident, $Value)
+; SectionExists  ($IniFile, $Section)
+; ValueExists    ($IniFile, $Section, $Ident)
+; ValueExists_LU ($IniFile, $Section, $Ident)
+; DeleteKey ($IniFile, $Section, $Ident)
+;--------------------------------------------------------------------
+
+;--------------------------------------------------------------------------------
+;  TCustomIniFile = class(TObject)
+;  private
+;    FFileName: string;
+;  public
+;    constructor Create(const FileName: string);
+;    function SectionExists(const Section: string): Boolean;
+;    function ReadString(const Section, Ident, Default: string): string; virtual; abstract;
+;    procedure WriteString(const Section, Ident, Value: String); virtual; abstract;
+;    function ReadInteger(const Section, Ident: string; Default: Longint): Longint; virtual;
+;    procedure WriteInteger(const Section, Ident: string; Value: Longint); virtual;
+;    function ReadBool(const Section, Ident: string; Default: Boolean): Boolean; virtual;
+;    procedure WriteBool(const Section, Ident: string; Value: Boolean); virtual;
+;    function ReadDate(const Section, Name: string; Default: TDateTime): TDateTime; virtual;
+;    function ReadDateTime(const Section, Name: string; Default: TDateTime): TDateTime; virtual;
+;    function ReadFloat(const Section, Name: string; Default: Double): Double; virtual;
+;    function ReadTime(const Section, Name: string; Default: TDateTime): TDateTime; virtual;
+;    procedure WriteDate(const Section, Name: string; Value: TDateTime); virtual;
+;    procedure WriteDateTime(const Section, Name: string; Value: TDateTime); virtual;
+;    procedure WriteFloat(const Section, Name: string; Value: Double); virtual;
+;    procedure WriteTime(const Section, Name: string; Value: TDateTime); virtual;
+;    procedure ReadSection(const Section: string; Strings: TStrings); virtual; abstract;
+;    procedure ReadSections(Strings: TStrings); virtual; abstract;
+;    procedure ReadSectionValues(const Section: string; Strings: TStrings); virtual; abstract;
+;    procedure EraseSection(const Section: string); virtual; abstract;
+;    procedure DeleteKey(const Section, Ident: String); virtual; abstract;
+;    procedure UpdateFile; virtual; abstract;
+;    function ValueExists(const Section, Ident: string): Boolean;
+;    property FileName: string read FFileName;
+;  end;
+;
+;  { TIniFile - Encapsulates the Windows INI file interface
+;    (Get/SetPrivateProfileXXX functions) }
+;
+;  TIniFile = class(TCustomIniFile)
+;  public
+;    function ReadString(const Section, Ident, Default: string): string; override;
+;    procedure WriteString(const Section, Ident, Value: String); override;
+;    procedure ReadSection(const Section: string; Strings: TStrings); override;
+;    procedure ReadSections(Strings: TStrings); override;
+;    procedure ReadSectionValues(const Section: string; Strings: TStrings); override;
+;    procedure EraseSection(const Section: string); override;
+;    procedure DeleteKey(const Section, Ident: String); override;
+;    procedure UpdateFile; override;
+;  end;
+;--------------------------------------------------------------------------------
+
+
+
+
+
+
+;--------------------------------------------------------------------------------
+; ReadSections
+;--------------------------------------------------------------------------------
+function ReadSections ($IniFile)
+;begin
+   $ReadSections = split(ReadProfileString ($IniFile, "", ""),chr(10))
+EndFunction
+;--------------------------------------------------------------------------------
+; ReadSections_LU
+;--------------------------------------------------------------------------------
+function ReadSections_LU ($IniFile)
+   DIM $Handle, $i, $Strings
+;begin
+   $Handle = 10
+   if Exist ($IniFile)
+      $Result = Open($Handle, $IniFile, 2)
+      if $Result = 0
+         $i = 0
+         $s = Trim(ReadLine($Handle))
+         while @ERROR = 0
+            if (Substr($s, 1, 1) = '[') and (Substr($s, Len($s), 1) = ']')
+               redim preserve $Strings[$i]
+               $Strings[$i] = Trim(Substr($s, 2, Len($s)-2))
+               $i = $i + 1
+            endif
+            $s = Trim(ReadLine($Handle))
+         loop
+         $Result = Close ($Handle)
+      endif
+   endif
+   $ReadSections_LU = $Strings
+EndFunction
+
+;--------------------------------------------------------------------------------
+; ReadSection
+;--------------------------------------------------------------------------------
+function ReadSection ($IniFile, $Section)
+   Dim $s,$Sections
+;begin
+   $s = ReadProfileString ($IniFile, $Section, "")
+   $Sections = split($s,chr(10))
+   if UBound($Sections) > 0
+      redim preserve $Sections[UBound($Sections)-1]
+   endif
+   $ReadSection = $Sections
+EndFunction
+;--------------------------------------------------------------------------------
+; ReadSection_LU
+;--------------------------------------------------------------------------------
+function ReadSection_LU ($IniFile, $Section)
+   DIM $Handle, $i, $Strings
+;begin
+   $Handle = 10
+   $Done = False
+   if Exist ($IniFile)
+      $Result = Open($Handle, $IniFile, 2)
+      if $Result = 0
+         $s = Trim(ReadLine($Handle))
+         while (@ERROR = 0) and ($Done <> True)
+            if (substr($s,1,1) = "[") and (substr($s,Len($s),1) = "]")
+               if UCase(Trim(substr($s,2,Len($s)-2))) = UCase($Section)
+                  $i = -1
+                  $s = Trim(ReadLine($Handle))
+                  while (@ERROR = 0) and (Substr($s, 1, 1) <> '[')
+                     if $S and (Substr($s, 1, 1) <> ";")
+                        $j = InStr($s, '=')
+                        if $j > 0
+                           $i = $i + 1
+                           redim preserve $Strings[$i]
+                           $Strings[$i] = Trim(Substr($s, 1, $j-1))
+                        else
+                           $i = $i + 1
+                           redim preserve $Strings[$i]
+                           $Strings[$i] = Trim($s)
+                        endif
+                     endif
+                     $s = Trim(ReadLine($Handle))
+                  loop
+                  $Done = True
+               endif
+            endif
+            if ($Done <> True)
+               $s = Trim(ReadLine($Handle))
+            endif
+         loop
+         $Result = Close ($Handle)
+      endif
+   endif
+   $ReadSection_LU = $Strings
+EndFunction
+
+;--------------------------------------------------------------------------------
+; ReadString
+;--------------------------------------------------------------------------------
+function ReadString ($IniFile, $Section, $Ident, $Default)
+;begin
+   $ReadString = $Default
+   $ReadString = ReadProfileString ($IniFile, $Section, $Ident)
+EndFunction
+
+;--------------------------------------------------------------------------------
+; WriteString
+;--------------------------------------------------------------------------------
+function WriteString($IniFile, $Section, $Ident, $Value)
+;begin
+   if ($Ident <> "") and ($Value <> "")
+      $WriteString = WriteProfileString ($IniFile, $Section, $Ident, $Value)
+   endif
+EndFunction
+
+;--------------------------------------------------------------------------------
+; DeleteKey ($IniFile, $Section, $Ident)
+;--------------------------------------------------------------------------------
+function DeleteKey ($IniFile, $Section, $Ident)
+;begin
+    $DeleteKey = WriteProfileString ($IniFile, $Section, $Ident, "")
+EndFunction
+
+;--------------------------------------------------------------------------------
+; SectionExists
+;--------------------------------------------------------------------------------
+function SectionExists ($IniFile, $Section)
+   Dim $i, $n, $Sections
+;begin
+   $Sections = ReadSections($IniFile)
+   $n = CountArray($Sections)
+   if $n > 0
+      $i = 0
+      while (UCase($Sections[$i]) <> UCase($Section)) and ($i < $n)
+         $i = $i + 1
+      loop
+      if ($i < $n)
+         $SectionExists = True
+      else
+         $SectionExists = False
+      endif
+   else
+      $SectionExists = False
+   endif
+EndFunction
+
+;--------------------------------------------------------------------------------
+; ValueExists
+;--------------------------------------------------------------------------------
+function ValueExists ($IniFile, $Section, $Ident)
+   Dim $i, $n, $Values
+;begin
+   $Values = ReadSection($IniFile, $Section)
+   $n = CountArray($Values)
+   if $n > 0
+      $i = 0
+      while (UCase($Values[$i]) <> UCase($Ident)) and ($i < $n)
+         $i = $i + 1
+      loop
+      if ($i < $n)
+         $ValueExists = True
+      else
+         $ValueExists = False
+      endif
+   else
+      $ValueExists = False
+   endif
+EndFunction
+
+;--------------------------------------------------------------------------------
+; ValueExists_LU
+;--------------------------------------------------------------------------------
+function ValueExists_LU ($IniFile, $Section, $Ident)
+   Dim $i, $n, $Values
+;begin
+   $Values = ReadSection_LU($IniFile, $Section)
+   $n = CountArray($Values)
+   if $n > 0
+      $i = 0
+      while (UCase($Values[$i]) <> UCase($Ident)) and ($i < $n)
+         $i = $i + 1
+      loop
+      ;if ($i < $n)
+      if (UCase($Values[$i]) = UCase($Ident))
+         $ValueExists_LU = True
+      else
+         $ValueExists_LU = False
+      endif
+   else
+      $ValueExists_LU = False
+   endif
+EndFunction

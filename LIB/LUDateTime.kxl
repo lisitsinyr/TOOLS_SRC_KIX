@@ -1,0 +1,103 @@
+;--------------------------------------------------------------------------------
+; LUDateTime.kxl
+;--------------------------------------------------------------------------------
+; TODAYyyyymmdd()
+;--------------------------------------------------------------------------------
+
+   $MonthDays1 = 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+   $MonthDays2 = 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+   ; Days between 1/1/0001 and 12/31/1899 
+   $DateDelta = 693594
+   $SecsPerDay = 24 * 60 * 60
+   $MSecsPerDay = $SecsPerDay * 1000
+
+;--------------------------------------------------------------------------------
+; TODAYyyyymmdd
+;--------------------------------------------------------------------------------
+function TODAYyyyymmdd()
+;begin
+   $TODAYyyyymmdd = AddChar("0", @Year, 4)+AddChar("0", @MonthNo, 2)+AddChar("0", @MDayNo, 2)
+EndFunction
+
+;--------------------------------------------------------------------------------
+; TODAY
+;--------------------------------------------------------------------------------
+function TODAY(optional $Option, optional $Delimiter)
+;begin
+   if not $Option
+      if not $Delimiter
+      	$TODAY = SUBSTR(@DATE,1,4)+SUBSTR(@DATE,6,2)+SUBSTR(@DATE,9,2)+
+        	 SUBSTR(@TIME,1,2)+SUBSTR(@TIME,4,2)+SUBSTR(@TIME,7,2)
+      else
+      	$TODAY = SUBSTR(@DATE,1,4)+SUBSTR(@DATE,6,2)+SUBSTR(@DATE,9,2)+
+                 $Delimiter+
+        	 SUBSTR(@TIME,1,2)+SUBSTR(@TIME,4,2)+SUBSTR(@TIME,7,2)
+      endif
+   else
+      select
+         case UCase($Option) = "Y"
+            $TODAY = SUBSTR(@DATE,1,4)
+         case UCase($Option) = "M"
+            $TODAY = SUBSTR(@DATE,6,2)
+         case UCase($Option) = "D"
+            $TODAY = SUBSTR(@DATE,9,2)
+         case UCase($Option) = "H"
+            $TODAY = SUBSTR(@TIME,1,2)
+         case UCase($Option) = "MM"
+            $TODAY = SUBSTR(@TIME,4,2)
+         case UCase($Option) = "S"
+            $TODAY = SUBSTR(@TIME,7,2)
+         case 1
+            $TODAY = SUBSTR(@DATE,1,4)+SUBSTR(@DATE,6,2)+SUBSTR(@DATE,9,2)+
+                     SUBSTR(@TIME,1,2)+SUBSTR(@TIME,4,2)+SUBSTR(@TIME,7,2)
+      endselect
+   endif
+EndFunction
+
+;--------------------------------------------------------------------------------
+; IsLeapYear($Year)
+;--------------------------------------------------------------------------------
+function IsLeapYear($Year)
+;begin
+   $IsLeapYear = ($Year mod 4 = 0) and (($Year mod 100 <> 0) or ($Year mod 400 = 0))
+endfunction
+
+;--------------------------------------------------------------------------------
+; EncodeDate($Year, $Month, $Day)
+;--------------------------------------------------------------------------------
+function EncodeDate($Year, $Month, $Day)
+;begin
+   ; $Result=RedirectOutput("r.log", 1)
+   $EncodeDate = 0
+   if IsLeapYear($Year) 
+      $LDayTable = $MonthDays2
+   else
+      $LDayTable = $MonthDays1
+   endif
+
+   if ($Year >= 1)  and ($Year <= 9999) and
+      ($Month >= 1) and ($Month <= 12) and
+      ($Day >= 1)   and ($Day <= $LDayTable[$Month-1])
+      $LDay = $Day
+      for $I=0 to $Month-2
+         $LDay = $LDay + $LDayTable[$I]
+      next
+      $I = $Year - 1;
+      $Date = ($I * 365) + ($I / 4) - ($I / 100) + ($I / 400) + $LDay - $DateDelta
+      $EncodeDate = $Date
+   endif
+   ; $Result = RedirectOutput("")
+endfunction
+
+;--------------------------------------------------------------------------------
+; EncodeTime($Hour, $Min, $Sec, $MSec)
+;--------------------------------------------------------------------------------
+function EncodeTime($Hour, $Min, $Sec, $MSec)
+;begin
+   $EncodeTime = 0
+   if ($Hour < 24) and ($Min < 60) and ($Sec < 60) and ($MSec < 1000)
+      $LTime = ($Hour * 3600000 + $Min * 60000 + $Sec * 1000 + $MSec) / $MSecsPerDay
+      $EncodeTime = $LTime
+   endif
+endfunction
+

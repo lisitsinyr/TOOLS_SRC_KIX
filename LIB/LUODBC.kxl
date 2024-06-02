@@ -1,0 +1,471 @@
+;===============================================================
+; LUODBC.kxl
+;-------------------------------------------------
+; CreateALIAS ($Alias, $Driver, $Desc, $Path, optional $Type, optional $UID, optional $PWD, optional $Database)
+; UpdateALIAS ($Alias, $Param, $Value, optional $Type)
+;===============================================================
+
+
+   ;----------------------------------------------------------------------------------------------------------
+   $Key              = "HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE"
+   $OracleHOME       = RegReadString ($Key, "ORACLE_HOME")
+   $OracleHOME_NAME  = RegReadString ($Key, "ORACLE_HOME_NAME")
+   $OracleDriver     = $OracleHOME+"\BIN\SQORA32.DLL"
+   ;----------------------------------------------------------------------------------------------------------
+   $Oracle10_HOME    = "C:\oracle\product\10.2.0\client_1"
+   ;----------------------------------------------------------------------------------------------------------
+
+
+   ;----------------------------------------------------------------------------------------------------------
+   $ODBC_INI    = "ODBC.INI"
+
+   $DBASE       = "DBASE",    %WINDIR%+"\System32\"+"odbcjt32.dll",  277, "dBase IV;",  "Driver do Microsoft dBase (*.dbf)"
+   $FoxPro      = "Foxpro",   %WINDIR%+"\System32\"+"vfpodbc.dll",     0, "Microsoft Visual FoxPro Driver",           "Microsoft Visual FoxPro Driver"
+   $Access      = "Access",   %WINDIR%+"\System32\"+"odbcjt32.dll",   25, "MS Access;", "Microsoft Access Driver (*.mdb)"
+
+   $Oracle      = "Oracle",   $OracleHOME+"\BIN\SQORA32.DLL",             0, "",  "Oracle ODBC Driver"
+   $Oracle8     = "Oracle8",  $OracleHOME+"\BIN\SQORA32.DLL",             0, "",  "Oracle ODBC Driver"
+   $Oracle9     = "Oracle9",  $OracleHOME+"\BIN\SQORA32.DLL",             0, "",  "Oracle in OraHome92"
+
+   ;"Driver"="C:\oracle\product\10.2.0\client_1\BIN\SQORA32.DLL"
+   $Oracle10    = "Oracle10", "C:\oracle\product\10.2.0\client_1\BIN\SQORA32.DLL",  0, "",  "Oracle in OraHome"
+
+   $MSOracle    = "MSOracle", %WINDIR%+"\System32\"+"msorcl32.dll",       0, "",  "Microsoft ODBC for Oracle"
+   $SQL         = "SQL",      %WINDIR%+"\System32\"+"SQLSRV32.dll",       0, "",  "SQL Server"
+
+   $ArrayDriver = $DBASE, $Foxpro, $Access, $Oracle, $MSOracle, $SQL, $Oracle8, $Oracle9, $Oracle10
+   ;-------------------------------------------------
+
+;-------------------------------------------------
+; GetOracle_HOME
+;-------------------------------------------------
+function GetOracle_HOME ($OracleHomeName)
+;begin
+   $GetOracle_HOME = ""
+   $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\ALL_HOMES'
+   $HOME_COUNTER = RegReadString ($Key, "HOME_COUNTER")
+   for $i=1 to $HOME_COUNTER
+      $ID_HOME = $i - 1
+      $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\HOME'+$ID_HOME
+      $ORACLE_HOME_NAME = RegReadString ($Key, "ORACLE_HOME_NAME")
+      if UCase($ORACLE_HOME_NAME) = UCase($OracleHomeName)
+         $GetORACLE_HOME = RegReadString ($Key, "Oracle_HOME")
+      endif
+   next
+EndFunction
+
+;-------------------------------------------------
+; GetDriver ($Driver)
+;-------------------------------------------------
+function GetDriver ($Driver)
+;begin
+   $GetDriver = ""
+   for Each $ItemDriver in $ArrayDriver
+      if UCase($Driver) = UCase($ItemDriver[0])
+         $GetDriver = $ItemDriver[1]
+         select
+            case UCase($Driver) = UCase("ORACLE")
+               $GetDriver = GetDriverDescOracle($OracleDriver)
+            case UCase($Driver) = UCase("ORACLE8")
+               $OracleDriver8 = GetOracle_HOME($OraHome81)+"\BIN\SQORA32.DLL"
+               $GetDriver = GetDriverDescOracle($OracleDriver8)
+            case UCase($Driver) = UCase("ORACLE9")
+               $OracleDriver9 = GetOracle_HOME($OraHome92)+"\BIN\SQORA32.DLL"
+               $GetDriver = GetDriverDescOracle($OracleDriver9)
+            case UCase($Driver) = UCase("ORACLE10")
+               $GetDriver = $Oracle10_HOME+"\BIN\SQORA32.DLL"
+         endselect
+      endif
+   next
+EndFunction
+;-------------------------------------------------
+; GetDriverID ($Driver)
+;-------------------------------------------------
+function GetDriverID ($Driver)
+;begin
+   $GetDriverID = 0
+   for Each $ItemDriver in $ArrayDriver
+      if UCase($Driver) = UCase($ItemDriver[0])
+         $GetDriverID = $ItemDriver[2]
+      endif
+   next
+EndFunction
+;-------------------------------------------------
+; GetDriverFIL ($Driver)
+;-------------------------------------------------
+function GetDriverFIL ($Driver)
+;begin
+   $GetDriverFIL = 0
+   for Each $ItemDriver in $ArrayDriver
+      if UCase($Driver) = UCase($ItemDriver[0])
+         $GetDriverFIL = $ItemDriver[3]
+      endif
+   next
+EndFunction
+;-------------------------------------------------
+; GetDriverDescOracle
+;-------------------------------------------------
+function GetDriverDescOracle($Driver)
+;begin
+   $GetDriverDescOracle = ""
+   $Key1 = "HKEY_LOCAL_MACHINE\SOFTWARE\ODBC\ODBCINST.INI"
+   $Index1 = 0
+   $s1 = EnumKey($Key1, $Index1)
+   while @ERROR = 0
+      $Key2 = $Key1 + "\" + $s1
+      $Index2 = 0
+      $s2 = EnumValue($Key2, $Index2)
+      while @ERROR = 0
+         $s3 = RegReadString ($Key2, $s2)
+         if UCase($Driver) = UCase($s3)
+            $GetDriverDescOracle = $s1
+            Exit 0
+         endif   
+         $Index2 = $Index2 + 1
+         $s2 = EnumValue($Key2, $Index2)
+      loop
+      $Index1 = $Index1 + 1
+      $s1 = EnumKey($Key1, $Index1)
+   loop
+EndFunction
+;-------------------------------------------------
+; GetDriverDesc ($Driver)
+;-------------------------------------------------
+function GetDriverDesc ($Driver)
+;begin
+   $OracleDriver8     = GetOracle_HOME($OraHome81)+"\BIN\SQORA32.DLL"
+   $OracleDriver9     = GetOracle_HOME($OraHome92)+"\BIN\SQORA32.DLL"
+   $OracleDriver10    = $Oracle10_HOME+"\BIN\SQORA32.DLL"
+   $GetDriverDesc = ""
+   for Each $ItemDriver in $ArrayDriver
+      if UCase($Driver) = UCase($ItemDriver[0])
+         $GetDriverDesc = $ItemDriver[4]
+         select
+            case UCase($Driver) = UCase("ORACLE")
+               $GetDriverDesc = GetDriverDescOracle($OracleDriver)
+
+            case UCase($Driver) = UCase("ORACLE8")
+               $GetDriverDesc = GetDriverDescOracle($OracleDriver8)
+
+            case UCase($Driver) = UCase("ORACLE9")
+               $GetDriverDesc = GetDriverDescOracle($OracleDriver9)
+
+            case UCase($Driver) = UCase("ORACLE10")
+               $GetDriverDesc = GetDriverDescOracle($OracleDriver10)
+         endselect
+      endif
+   next
+EndFunction
+
+;-------------------------------------------------------------------------------
+; CreateALIAS ($Alias, $Driver, $Desc, $Path, optional $Type, optional $UID, optional $PWD, optional $Database)
+;-------------------------------------------------------------------------------
+function CreateALIAS ($Alias, $Driver, $Desc, $Path, optional $Type, optional $UID, optional $PWD, optional $Database)
+;begin
+   select
+      case UCase($Type)  = UCase("User")
+         $Root = "HKEY_CURRENT_USER"
+      case UCase($Type)  = UCase("System")
+         $Root = "HKEY_LOCAL_MACHINE"
+      case 1
+         $Root = "HKEY_CURRENT_USER"
+   endselect
+   if $Alias
+      ;-------------------------------------------------------------------------------
+      $Key = $Root+"\Software\ODBC\ODBC.INI\"+$Alias
+      $Result = RegDeleteKey ($Key)
+      ;-------------------------------------------------------------------------------
+      RegWriteString ($Key, "Driver",           GetDriver ($Driver))
+      RegWriteString ($Key, "Description",      $Desc)
+      select
+         case UCase($Driver) = UCase("DBASE")
+            ;----------------------------------------------------------
+            ; DBASE
+            ;----------------------------------------------------------
+            RegWriteString ($Key, "DefaultDir",             $Path)
+            RegWriteString ($Key, "FIL",                    GetDriverFIL ($Driver))
+            RegWriteDWORD  ($Key, "DriverId",               GetDriverID ($Driver))
+            RegWriteDWORD  ($Key, "SafeTransactions",       0)
+            RegWriteString ($Key, "UID",                    "")
+         case UCase($Driver) = UCase("FOXPRO")
+            ;----------------------------------------------------------
+            ; FOXPRO
+            ;----------------------------------------------------------
+            RegWriteString ($Key, "SourceDB",               $Path)
+            RegWriteString ($Key, "SourceType",             "DBF")
+            RegWriteString ($Key, "BackgroundFetch",        "Yes")
+            RegWriteString ($Key, "Exclusive",              "No")
+            RegWriteString ($Key, "Collate",                "Machine")
+            RegWriteString ($Key, "SetNoCountOn",           "No")
+         case UCase($Driver) = UCase("Access")
+            ;----------------------------------------------------------
+            ; Access
+            ;----------------------------------------------------------
+            RegWriteString ($Key, "DBQ",                    $Path)
+            RegWriteString ($Key, "FIL",                    GetDriverFIL ($Driver))
+            RegWriteDWORD  ($Key, "DriverId",               GetDriverID ($Driver))
+            RegWriteDWORD  ($Key, "SafeTransactions",       0)
+            RegWriteString ($Key, "UID",                    "")
+         case UCase($Driver) = UCase("Oracle") or UCase($Driver) = UCase("Oracle8")
+            ;----------------------------------------------------------
+            ; Oracle
+            ;----------------------------------------------------------
+            RegWriteString ($Key, "ServerName",             $Path)
+            if $UID
+               RegWriteString ($Key, "UserID",              $UID)
+            else
+               RegWriteString ($Key, "UserID",              "")
+            endif
+            RegWriteString ($Key, "Password",               "")
+            RegWriteString ($Key, "Translation Option",     "0")
+            RegWriteString ($Key, "Translation DLL",        "")
+            RegWriteString ($Key, "Attributes",             "W")
+            RegWriteString ($Key, "Application Attributes", "T")
+            RegWriteString ($Key, "PrefetchCount",          "10")
+            RegWriteString ($Key, "Lobs",                   "T")
+            RegWriteString ($Key, "ResultSets",             "T")
+            RegWriteString ($Key, "Longs",                  "F")
+            RegWriteString ($Key, "DisableMTS",             "F")
+            RegWriteString ($Key, "Failover",               "T")
+            RegWriteString ($Key, "QueryTimeout",           "T")
+            RegWriteString ($Key, "CloseCursor",            "F")
+            RegWriteString ($Key, "FailoverRetryCount",     "10")
+            RegWriteString ($Key, "FailoverDelay",          "10")
+            ;----------------------------------------------------
+            ; Oracle 9
+            ;----------------------------------------------------
+            RegWriteString ($Key, "ForceWCHAR",             "F")
+            RegWriteString ($Key, "MetadataIdDefault",      "F")
+            RegWriteString ($Key, "EXECSchemaOpt",          "")
+            RegWriteString ($Key, "EXECSyntax",             "F")
+            RegWriteString ($Key, "SQLGetData extensions",  "F")
+            RegWriteString ($Key, "BatchAutocommitMode",    "IfAllSuccessful")
+            RegWriteString ($Key, "DSN",                    $Alias)
+         case UCase($Driver) = UCase("Oracle9")
+            ;----------------------------------------------------------
+            ; Oracle
+            ;----------------------------------------------------------
+            RegWriteString ($Key, "ServerName",             $Path)
+            if $UID
+               RegWriteString ($Key, "UserID",              $UID)
+            else
+               RegWriteString ($Key, "UserID",              "")
+            endif
+            RegWriteString ($Key, "Password",               "")
+            RegWriteString ($Key, "Translation Option",     "0")
+            RegWriteString ($Key, "Translation DLL",        "")
+            RegWriteString ($Key, "Attributes",             "W")
+            RegWriteString ($Key, "Application Attributes", "T")
+            RegWriteString ($Key, "PrefetchCount",          "10")
+            RegWriteString ($Key, "Lobs",                   "T")
+            RegWriteString ($Key, "ResultSets",             "T")
+            RegWriteString ($Key, "Longs",                  "F")
+            RegWriteString ($Key, "DisableMTS",             "F")
+            RegWriteString ($Key, "Failover",               "T")
+            RegWriteString ($Key, "QueryTimeout",           "T")
+            RegWriteString ($Key, "CloseCursor",            "F")
+            RegWriteString ($Key, "FailoverRetryCount",     "10")
+            RegWriteString ($Key, "FailoverDelay",          "10")
+            ;----------------------------------------------------
+            ; Oracle 9
+            ;----------------------------------------------------
+            RegWriteString ($Key, "ForceWCHAR",             "F")
+            RegWriteString ($Key, "MetadataIdDefault",      "F")
+            RegWriteString ($Key, "EXECSchemaOpt",          "")
+            RegWriteString ($Key, "EXECSyntax",             "F")
+            RegWriteString ($Key, "SQLGetData extensions",  "F")
+            RegWriteString ($Key, "BatchAutocommitMode",    "IfAllSuccessful")
+            RegWriteString ($Key, "DSN",                    $Alias)
+         case UCase($Driver) = UCase("Oracle10")
+            ;----------------------------------------------------------
+            ; Oracle
+            ;----------------------------------------------------------
+            RegWriteString ($Key, "ServerName",             $Path)
+            if $UID
+               RegWriteString ($Key, "UserID",              $UID)
+            else
+               RegWriteString ($Key, "UserID",              "")
+            endif
+            RegWriteString ($Key, "Password",               "")
+
+            RegWriteString ($Key, "Attributes",             "W")
+            RegWriteString ($Key, "Application Attributes", "T")
+            RegWriteString ($Key, "Lobs",                   "T")
+            RegWriteString ($Key, "ResultSets",             "T")
+            RegWriteString ($Key, "DisableMTS",             "F")
+            RegWriteString ($Key, "Failover",               "T")
+            RegWriteString ($Key, "QueryTimeout",           "T")
+            RegWriteString ($Key, "CloseCursor",            "F")
+            RegWriteString ($Key, "FailoverRetryCount",     "10")
+            RegWriteString ($Key, "FailoverDelay",          "10")
+            ;----------------------------------------------------
+            ; Oracle 9
+            ;----------------------------------------------------
+            RegWriteString ($Key, "ForceWCHAR",             "F")
+            RegWriteString ($Key, "MetadataIdDefault",      "F")
+            RegWriteString ($Key, "EXECSchemaOpt",          "")
+            RegWriteString ($Key, "EXECSyntax",             "F")
+            RegWriteString ($Key, "BatchAutocommitMode",    "IfAllSuccessful")
+            RegWriteString ($Key, "DSN",                    $Alias)
+            ;----------------------------------------------------
+            ; Oracle 10
+            ;----------------------------------------------------
+            RegWriteString ($Key, "FetchBufferSize",        "64000")
+            RegWriteString ($Key, "NumericSetting",         "NLS")
+            RegWriteString ($Key, "BindAsDATE",             "F")
+            RegWriteString ($Key, "DisableDPM",             "F")
+
+         case UCase($Driver) = UCase("MSOracle")
+            ;----------------------------------------------------------
+            ; MSOracle
+            ;----------------------------------------------------------
+            RegWriteString ($Key, "DSN",                    $Desc)
+            if $UID
+               RegWriteString ($Key, "UID",                 $UID)
+            else
+               RegWriteString ($Key, "UID",                 "")
+            endif
+            if $PWD
+               RegWriteString ($Key, "PWD",                 $PWD)
+            else
+               RegWriteString ($Key, "PWD",                 "")
+            endif
+            RegWriteString ($Key, "SERVER",                 $Path)
+            RegWriteString ($Key, "BufferSize",             "65535")
+            RegWriteString ($Key, "SynonymColumns",         "1")
+            RegWriteString ($Key, "Remarks",                "0")
+            RegWriteString ($Key, "StdDayOfWeek",           "1")
+            RegWriteString ($Key, "GuessTheColDef",         "0")
+            RegWriteString ($Key, "StripTrailingZero",      "0")
+         case UCase($Driver) = UCase("SQL")
+            ;----------------------------------------------------------
+            ; SQL
+            ;----------------------------------------------------------
+            RegWriteString ($Key, "Server",                 $Path)
+            if $UID
+               RegWriteString ($Key, "LastUser",            $UID)
+            else
+               RegWriteString ($Key, "LastUser",            "")
+            endif
+            RegWriteString ($Key, "Database",               $Database)
+      endselect
+
+      ;-------------------------------------------------------------------------------
+      ; Дополнительно
+      ;-------------------------------------------------------------------------------
+      select
+         case UCase($Driver) = UCase("DBASE")
+            ;----------------------------------------------------------
+            ; DBASE
+            ;----------------------------------------------------------
+            $Key = $Root+"\Software\ODBC\ODBC.INI\"+$Alias+"\Engines\Xbase"
+            RegWriteDWORD      ($Key, "PageTimeout",       600)
+            RegWriteString     ($Key, "CollatingSequence", "ASCII")
+            RegWriteBinaryData ($Key, "Deleted",           "01")
+            RegWriteBinaryData ($Key, "Statistics",        "00")
+            RegWriteString     ($Key, "ImplicitCommitSync", "")
+            RegWriteDWORD      ($Key, "Threads",            3)
+            RegWriteString     ($Key, "UserCommitSync",     "Yes")
+         case UCase($Driver) = UCase("Access")
+            ;----------------------------------------------------------
+            ; Access
+            ;----------------------------------------------------------
+            $Key = $Root+"\Software\ODBC\ODBC.INI\"+$Alias+"\Engines\Jet"
+            RegWriteDWORD      ($Key, "PageTimeout",        5)
+            RegWriteDWORD      ($Key, "MaxBufferSize",      2048)
+            RegWriteString     ($Key, "ImplicitCommitSync", "")
+            RegWriteDWORD      ($Key, "Threads",            3)
+            RegWriteString     ($Key, "UserCommitSync",     "Yes")
+      endselect
+   
+      ;-------------------------------------------------------------------------------
+      ; Собственно Alias
+      ;-------------------------------------------------------------------------------
+      $Key = $Root+"\Software\ODBC\ODBC.INI\ODBC Data Sources"
+      RegWriteString($Key, $Alias, GetDriverDesc ($Driver))
+
+      ;-------------------------------------------------------------------------------
+      ; ODBC.INI
+      ;-------------------------------------------------------------------------------
+      $Result = WriteString ($ODBC_INI, "ODBC 32 bit Data Sources", $Alias, GetDriverDesc ($Driver))
+      $Result = WriteString ($ODBC_INI, $Alias, "Driver32", GetDriver ($Driver))
+      ;-------------------------------------------------------------------------------
+   endif
+EndFunction
+
+;-------------------------------------------------------------------------------
+; UpdateALIAS ($Alias, $Param, $Value, optional $Type)
+;-------------------------------------------------------------------------------
+function UpdateALIAS ($Alias, $Param, $Value, optional $Type)
+;begin
+   select
+      case UCase($Type)  = UCase("User")
+         $Root = "HKEY_CURRENT_USER"
+      case UCase($Type)  = UCase("System")
+         $Root = "HKEY_LOCAL_MACHINE"
+      case 1
+         $Root = "HKEY_CURRENT_USER"
+   endselect
+   ;-------------------------------------------------------------------------------
+   $Key = $Root+"\Software\ODBC\ODBC.INI\"+$Alias
+   ;-------------------------------------------------------------------------------
+   if 
+      ;------ DBASE|Access ----------------------------------------
+      UCase($Param) = UCase("FIL") or
+      UCase($Param) = UCase("DriverId") or
+      UCase($Param) = UCase("SafeTransactions") or
+      UCase($Param) = UCase("UID") or
+      ;------ DBASE ----------------------------------------
+      UCase($Param) = UCase("DefaultDir") or
+      ;------ Access ----------------------------------------
+      UCase($Param) = UCase("DBQ") or
+      ;------ Oracle ----------------------------------------
+      UCase($Param) = UCase("ServerName") or
+      UCase($Param) = UCase("UserID") or
+      UCase($Param) = UCase("Translation Option") or
+      UCase($Param) = UCase("Translation DLL") or
+      UCase($Param) = UCase("Attributes") or
+      UCase($Param) = UCase("Application Attributes") or
+      UCase($Param) = UCase("PrefetchCount") or
+      UCase($Param) = UCase("Lobs") or
+      UCase($Param) = UCase("ResultSets") or
+      UCase($Param) = UCase("Longs") or
+      UCase($Param) = UCase("DisableMTS") or
+      UCase($Param) = UCase("Failover") or
+      UCase($Param) = UCase("QueryTimeout") or
+      UCase($Param) = UCase("CloseCursor") or
+      UCase($Param) = UCase("FailoverRetryCount") or
+      UCase($Param) = UCase("FailoverDelay"
+      ;----------------------------------------------
+      RegWriteString ($Key, $Param, $Value)
+   endif
+   ;-------------------------------------------------------------------------------
+   select
+      case UCase($Driver) = UCase("DBASE")
+         $Key = $Root+"\Software\ODBC\ODBC.INI\"+$Alias+"\Engines\Xbase"
+         if 
+            ;----------------------------------------------
+            UCase($Param) = UCase("PageTimeout") or
+            UCase($Param) = UCase("CollatingSequence") or
+            UCase($Param) = UCase("Deleted") or
+            UCase($Param) = UCase("Statistics") or
+            UCase($Param) = UCase("ImplicitCommitSync") or
+            UCase($Param) = UCase("Threads") or
+            UCase($Param) = UCase("UserCommitSync")
+            ;----------------------------------------------
+            RegWriteString ($Key, $Param, $Value)
+         endif
+      case UCase($Driver) = UCase("Access")
+         $Key = $Root+"\Software\ODBC\ODBC.INI\"+$Alias+"\Engines\Jet"
+         if 
+            ;----------------------------------------------
+            UCase($Param) = UCase("PageTimeout") or
+            UCase($Param) = UCase("MaxBufferSize") or
+            UCase($Param) = UCase("ImplicitCommitSync") or
+            UCase($Param) = UCase("Threads") or
+            UCase($Param) = UCase("UserCommitSync")
+            ;----------------------------------------------
+            RegWriteString ($Key, $Param, $Value)
+         endif
+   endselect
+EndFunction

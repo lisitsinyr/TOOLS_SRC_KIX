@@ -1,0 +1,522 @@
+;===============================================================
+;LUSupport.kxl
+;===============================================================
+; WriteLN($c,$s)
+; Pause()
+; pause2(optional $delay, optional $prompt)
+; LogFileName($Log, $LogDir, $LogFile)
+; LogAdd ($Log, $LogFile, $Opt, $Message)
+; LogAddFile ($Log, $LogFile, $Opt, $FileName, optional $Color)
+; GetFolderCU($FolderName)
+; SetFolderCU($FolderName, $Value)
+; GetFolderLM($FolderName)
+; SetFolderLM($FolderName, $Value)
+; fnAllSpecialFolders()
+; PasswdFromKbd(optional $Prompt)
+;--------------------------------------------------------------------
+
+;-------------------------------------------------
+; Write($c,$s)
+;-------------------------------------------------
+function Write($c,$s)
+;begin
+   COLOR $c
+   $s
+endfunction
+
+;-------------------------------------------------
+; Mem
+;-------------------------------------------------
+function Memory
+;begin
+   $objWMIService = GetObject("winmgmts:"+"{impersonationLevel=impersonate}!\\" + @WKSTA + "\root\cimv2")
+   $colCSItems = $objWMIService.ExecQuery("SELECT * FROM Win32_ComputerSystem")
+   For Each $objCSItem In $colCSItems
+      $Memory = $Memory + $objCSItem.TotalPhysicalMemory
+   Next
+endfunction
+
+;-------------------------------------------------
+; WriteLN($c,$s)
+;-------------------------------------------------
+function WriteLN($c,$s)
+;begin
+   COLOR $c
+   $s ?
+endfunction
+
+;--------------------------------------------------------------------------------
+; WriteStr ($FileName, $Str)
+;--------------------------------------------------------------------------------
+Function WriteStr ($FileName, $Str, optional $Color)
+;begin
+   $SaveColor = @Color
+   $Res=RedirectOutput($FileName, 0)
+   if $Color COLOR $Color endif
+   $Str ?   
+   if $Color COLOR $SaveColor endif
+   ;------------------------------------------------------------
+   ;if $FileName
+   ;   $Handle = FreeFileHandle
+   ;   if Open ($Handle, $FileName, 1+4) = 0
+   ;      $Res = WriteLine ($Handle, $Str)
+   ;      if $Res
+   ;         $Res = Close ($Handle)
+   ;      endif
+   ;   endif
+   ;else
+   ;   $Res=RedirectOutput("")
+   ;   $s ?   
+   ;endif
+   ;$WriteStr = $Res
+   ;--------------------------------------------------------------
+endfunction
+
+;-------------------------------------------------
+; ReadParam($Title,$Default)
+;-------------------------------------------------
+function ReadParam($Title,$Default)
+;begin
+   ;WriteLN ("w/n",  "")
+   WriteLN ("w+/n", "Введите ("+$Title+")["+$Default+"]: ")
+   Gets $ReadParam
+   if (not $ReadParam) or ($ReadParam = "")
+      $ReadParam = $Default
+   endif
+   ;WriteLN ("w/n",  "")
+EndFunction
+
+;--------------------------------------------------------------------
+; Pause(optional $prompt)
+;--------------------------------------------------------------------
+function Pause(optional $prompt)
+;begin
+   if not $prompt
+      $prompt="Press any key to continue "
+   endif
+   if $prompt $prompt ? endif
+   get $x
+Endfunction
+
+;--------------------------------------------------------------------
+; pause2(optional $delay, optional $prompt)
+;--------------------------------------------------------------------
+;Contributors
+; Richard H.
+;
+;Version:
+; 1.1
+;
+;Action:
+; Pause the execution of a script for a specified period of time, or continue on the
+; press of a key.
+;
+;Syntax:
+; Pause(optional $delay, optional $prompt)
+;
+;Parameters:
+; $Delay: (optional) 
+; n seconds to delay
+; If ommitted, pauses until key pressed
+; $Prompt: (optional)
+; Message to display
+; If ommitted, displays "Press any key to continue"
+; 
+;Returns:
+; Key pressed.
+; -1 : If using delay, and no key pressed when timer expires
+;
+;Dependencies:
+;
+;
+;Example:
+; $=Pause()
+; $=Pause(10)
+; $=Pause(,"Press something!")
+; $=Pause(10,"Press the 'AnyKey'")
+;
+;--------------------------------------------------------------------
+function pause2(optional $delay, optional $prompt)
+   dim $loop, $counter, $interval
+;begin
+   $Res=RedirectOutput("")
+   $pause=-1
+   if not $prompt
+      $prompt="Press any key to continue "
+   endif
+   if $prompt $prompt ? endif
+   if $delay>0 
+      $Interval=0.2
+      $delay=$delay+1
+      while $pause=-1 and $delay>1.0 + $interval
+         $delay=cdbl($delay)-$interval
+         $counter = "[" + fix($delay) + "]:"
+         $counter
+         sleep $interval
+         for $loop = 1 to len($counter)
+            chr(8) + " " + chr(8)
+         next
+         if kbhit()
+            get $pause
+         endif
+      loop
+   else
+      get $pause
+   endif
+endfunction 
+
+;-------------------------------------------------
+; LogFileName($Log, $LogDir, $LogFile)
+;-------------------------------------------------
+function LogFileName($Log, $LogDir, $LogFile)
+;begin
+   select
+      case $Log=1 or $Log=3 or $Log=10 or $Log=30
+         if not $LogDir
+            $LogDir = %USERPROFILE%
+            $LogDir = %TEMP%
+         endif
+         if not $LogFile
+            $a = Split(@DATE,"/")
+            $LogFile = Join($a,"")+".log"
+         endif
+         $LogFileName = $LogDir+"\"+$LogFile
+         if $Log=10 or $Log=30
+            del ($LogFileName)
+         endif
+      case $Log=2
+         $LogFileName = ""
+   endselect
+EndFunction
+
+;--------------------------------------------------------------------------------
+; LogAdd ($Log, $LogFile, $Opt, $Message, optional $Color)
+;--------------------------------------------------------------------------------
+Function LogAdd ($Log, $LogFile, $Opt, $Message, optional $Color)
+   Dim $s
+;begin
+   select
+      case UCase($Opt) = "I"
+         $s = "$Message"
+      case 1
+         $s = "@DATE @TIME $Opt $Message"
+   endselect
+   select
+      case ($Log=1 or $Log=10) and $LogFile
+         $=RedirectOutput($LogFile,0)=0
+         $s ?
+         $=RedirectOutput("")
+      case $Log=2
+         if $Color COLOR $Color endif
+         $s ?
+      case ($Log=3 or $Log=30) and $LogFile
+         $=RedirectOutput($LogFile,0)=0
+         $s ?
+         $=RedirectOutput("")
+
+         if $Color COLOR $Color endif
+         $s ?
+         if $Color COLOR W/N endif
+
+   endselect
+EndFunction
+
+;--------------------------------------------------------------------------------
+; LogAddFile ($Log, $LogFile, $Opt, $FileName, optional $Color)
+;--------------------------------------------------------------------------------
+Function LogAddFile ($Log, $LogFile, $Opt, $FileName, optional $Color)
+;begin
+   if EXIST ($FileName)
+      $Handle = FreeFileHandle
+      if Open ($Handle, $FileName, 2) = 0
+         $Str = ReadLine ($Handle)
+         while @ERROR = 0
+            LogAdd ($Log, $LogFile, $Opt, $Str, $Color)
+            $Str = ReadLine ($Handle)
+         loop
+         $Res = Close ($Handle)
+      endif
+   endif
+EndFunction
+
+;--------------------------------------------------------------------------------
+; GetFolderCU($FolderName)
+;--------------------------------------------------------------------------------
+function GetFolderCU($FolderName)
+   Dim $s
+;begin
+   $s = "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders"
+   $GetFolderCU = ReadString($S, $FolderName)
+EndFunction
+
+;--------------------------------------------------------------------------------
+; SetFolderCU($FolderName, $Value)
+;--------------------------------------------------------------------------------
+function SetFolderCU($FolderName, $Value)
+   Dim $s
+;begin
+   $s = "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders"
+   $SetFolderCU = WriteString($S, $FolderName, $Value, REG_SZ)
+EndFunction
+
+;--------------------------------------------------------------------------------
+; GetFolderLM($FolderName)
+;--------------------------------------------------------------------------------
+function GetFolderLM($FolderName)
+   Dim $s
+;begin
+   $s = "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders"
+   $GetFolderLM = ReadString($S, $FolderName)
+EndFunction
+
+;--------------------------------------------------------------------------------
+; SetFolderLM($FolderName, $Value)
+;--------------------------------------------------------------------------------
+function SetFolderLM($FolderName, $Value)
+   Dim $s
+;begin
+   $s = "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders"
+   $SetFolderLM = WriteString($S, $FolderName, $Value, REG_SZ)
+EndFunction
+
+;--------------------------------------------------------------------------------
+; fnAllSpecialFolders()
+;--------------------------------------------------------------------------------
+;
+;Function:
+;      fnAllSpecialFolders()
+;
+;Author:
+;      Christopher Shilt (christopher.shilt@relizon.com)
+;
+;Contributors:
+;      Radimus
+;
+;Version:
+;      1.1
+;
+;Version History:
+;      13 November 2002 Version 1.0   : Original Version
+;      13 November 2002 Version 1.1   : Declares all variables
+;
+;Action:
+;      Dynamically sets variables with the path of all available Windows
+;      special folders.
+;
+;Syntax:
+;      fnAllSpecialFolders()
+;
+;Parameters:
+;
+;Remarks:
+;      This function retrieves paths to special folders using the 
+;      special folder name as the index. A special folder's path 
+;      depends on the user environment. The information stored in 
+;      a special folder is unique to the user logged onto the computer 
+;      system. If several different users have accounts on the same 
+;      computer system, several different sets of special folders 
+;      are stored on the hard disk. If the special folder does not exist
+;      (e.g. AllUsersPrograms on a Windows 95 computer), then the 
+;      resulting string will be empty.
+;
+;      The following strings will be created: 
+;
+;      $AllUsersDesktop 
+;      $AllUsersStartMenu 
+;      $AllUsersPrograms 
+;      $AllUsersStartup
+;      $AppData 
+;      $Desktop 
+;      $Favorites 
+;      $Fonts 
+;      $MyDocuments 
+;      $NetHood 
+;      $PrintHood 
+;      $Programs 
+;      $Recent 
+;      $SendTo 
+;      $StartMenu 
+;      $Startup 
+;      $Templates 
+;
+;Returns:
+;      Path to special folder item
+;      @ERROR = 0   : Operation Completed Successfully
+;      @ERROR = 1   : Unable to instantiate WScript.Shell object
+; 
+;Dependencies:
+;      KiX 4.02 (or higher)
+;      Windows Scripting Host (WSH) 1.0 (or higher)
+; 
+;Example:
+;      fnAllSpecialFolders()
+;
+;      $AllUsersDesktop ?
+;      $AllUsersStartMenu ?
+;      $AllUsersPrograms ?
+;      $AllUsersStartup ?
+;      $AppData ?
+;      $Desktop ?
+;      $Favorites ?
+;      $Fonts ?
+;      $MyDocuments ?
+;      $NetHood ?
+;      $PrintHood ?
+;      $Programs ?
+;      $Recent ?
+;      $SendTo ?
+;      $StartMenu ?
+;      $Startup ?
+;      $Templates ?
+;
+;Example Returns:
+;      C:\Documents and Settings\All Users\Desktop
+;      C:\Documents and Settings\All Users\Start Menu
+;      C:\Documents and Settings\All Users\Start Menu\Programs
+;      C:\Documents and Settings\All Users\Start Menu\Programs\Startup
+;      C:\Documents and Settings\Chris\Application Data
+;      C:\Documents and Settings\Chris\Desktop
+;      C:\Documents and Settings\Chris\Favorites
+;      C:\WINDOWS\Fonts
+;      C:\Documents and Settings\Chris\My Documents
+;      C:\Documents and Settings\Chris\NetHood
+;      C:\Documents and Settings\Chris\PrintHood
+;      C:\Documents and Settings\Chris\Start Menu\Programs
+;      C:\Documents and Settings\Chris\Recent
+;      C:\Documents and Settings\Chris\SendTo
+;      C:\Documents and Settings\Chris\Start Menu
+;      C:\Documents and Settings\Chris\Start Menu\Programs\Startup
+;      C:\Documents and Settings\Chris\Templates
+;--------------------------------------------------------------------------------
+Function fnAllSpecialFolders()
+   Dim $sAllFolders, $objWshShell, $Folder, $nul
+   Global $AllUsersDesktop, $AllUsersStartMenu, $AllUsersPrograms, $AllUsersStartup, 
+          $AppData, $Desktop, $Favorites, $Fonts, $MyDocuments, $NetHood, $PrintHood,
+          $Programs, $Recent, $SendTo, $StartMenu, $Startup, $Templates
+   $sAllFolders="AllUsersDesktop AllUsersStartMenu AllUsersPrograms AllUsersStartup "+
+      "AppData Desktop Favorites Fonts MyDocuments NetHood PrintHood Programs Recent "+
+      "SendTo StartMenu Startup Templates"
+   $objWshShell = CreateObject("WScript.Shell")
+   If @ERROR Exit(1) EndIf
+   For Each $Folder in Split($sAllFolders)
+      $nul=Execute("$"+$Folder+" = $$objWshShell.SpecialFolders($$Folder)")
+   Next
+   $objWshShell='' Exit(0)
+EndFunction
+
+
+;--------------------------------------------------------------------------------
+; fnGetM(OPTIONAL $sM,OPTIONAL $lTO)
+;--------------------------------------------------------------------------------
+;
+;Function:
+; fnGetM()
+;
+;Author:
+; Christopher Shilt (christopher.shilt@relizon.com)
+;
+;Version:
+; 1.2
+;
+;Version History:
+; 10 February 2003 Version 1.0 : Original Version
+; 11 February 2003 Version 1.1 : Added Sleep. Omits Backspace keystrokes.
+; 05 March 2003 Version 1.2 : Added Timeout. Handles Backspace keystrokes.
+;
+;Action:
+; Simulates the GetS Command, with optional mask and timeout.
+;
+;Syntax:
+; fnGetM(optional MASK, optional TIMEOUT)
+;
+;Parameters:
+;
+;Remarks:
+;
+;Returns:
+; Typed string.
+; 
+;Dependencies:
+; KiX 4.02 (or higher)
+; 
+;Example:
+; "Enter Password: " GetS $pass
+; ? $pass
+; ?
+;
+; "Enter Password: " $pass = fnGetM("*",10)
+; @ERROR " : " @SERROR
+; ? $pass
+;
+;Example Returns:
+; Results of typed string.
+;
+;--------------------------------------------------------------------------------
+Function fnGetM(OPTIONAL $sM,OPTIONAL $lTO)
+   Dim $X,$lT,$lTC
+;begib
+   Do
+      $lT=@Ticks
+      Sleep 0.05
+      If KbHit()
+         Get $X
+         If Asc($X)>32
+            $fnGetM=$fnGetM+$X
+            If $sM $sM Else $X EndIf
+         EndIf
+         If Instr($X,Chr(8)) AND LEN($fnGetM)>0
+            Chr(8) Chr(32) Chr(8)
+            $fnGetM=Left($fnGetM,LEN($fnGetM)-1)
+         EndIf
+         $lTC=0
+      Endif
+      If $lTO
+         If $lTC < $lTO*1000
+            $lTC=$lTC+@Ticks-$lT
+         Else
+            $fnGetM=""
+         ? Exit 121
+         EndIf
+      EndIf
+   Until Instr($X,Chr(13))
+   ? Exit 0
+EndFunction 
+
+;------------------------------------------------------
+; PrintGeneralTitle ($LLog, $LFile)
+;------------------------------------------------------
+function PrintGeneralTitle ($LLog, $LFile)
+;begin
+   LogAdd ($LLog, $LFile, "I", "===========================================")
+   LogAdd ($LLog, $LFile, "I", "Текущее время = " + @Date+" "+@Time)
+   LogAdd ($LLog, $LFile, "I", "===========================================")
+   LogAdd ($LLog, $LFile, "I", "UserID        = " + $USERID)
+   LogAdd ($LLog, $LFile, "I", "FullName      = " + @FullName+" ("+@Comment+")")
+   LogAdd ($LLog, $LFile, "I", "PCUser        = " + %COMPUTERNAME%+" ("+Trim(@CPU)+" "+@MHz+")")
+   LogAdd ($LLog, $LFile, "I", "HostName      = " + @HostName)
+   LogAdd ($LLog, $LFile, "I", "OS            = " + @ProductType+" "+@DOS+" ("+@Build+")")
+   LogAdd ($LLog, $LFile, "I", "CompName      = " + @WKSTA)
+
+   LogAdd ($LLog, $LFile, "I", "DomainPC      = " + @Domain)
+   LogAdd ($LLog, $LFile, "I", "DomainUser    = " + @LDomain)
+   LogAdd ($LLog, $LFile, "I", "LServer       = " + @LServer)
+
+   LogAdd ($LLog, $LFile, "I", "StartDir      = " + @StartDir)
+   LogAdd ($LLog, $LFile, "I", "ScriptExe     = " + @ScriptExe)
+   LogAdd ($LLog, $LFile, "I", "Kix           = " + @Kix)
+
+   LogAdd ($LLog, $LFile, "I", "KxlDir        = " + $KxlDir)
+   LogAdd ($LLog, $LFile, "I", "LogFile       = " + $LFile)
+   LogAdd ($LLog, $LFile, "I", "Debug         = " + $Debug)
+   LogAdd ($LLog, $LFile, "I", "===========================================")
+EndFunction
+
+;------------------------------------------------------
+; PasswdFromKbd(optional $Prompt)
+;------------------------------------------------------
+function PasswdFromKbd(optional $Prompt)
+;begin
+    WriteLN ("w/n",  "")
+    WriteLN ("w+/n", "$Admin_Password_Desc")
+     $PasswdFromKbd = fnGetM("*")
+EndFunction

@@ -1,0 +1,439 @@
+;===============================================================
+; LUSUBD.kxl
+;---------------------------------------------------------------
+;
+;function ExucuteSQL($FileSQL, $FileResult)
+;
+;---------------------------------------------------------------
+
+   BREAK ON
+
+   $FormatXLS = 1
+   $FormatXML = 2
+   $FormatCSV = 3
+   $FormatDBF = 4
+   $OraHome92 = "OraHome92"
+   $OraHome81 = "OraHome81"
+   $OraHome10 = "OraHome10"
+
+;=======================================================================================
+; 
+;=======================================================================================
+function SaveRecordSet($objRecordSet, $Format, $OutFile, optional $RecordSetProc)
+;begin
+   if Exist ($OutFile)
+      DEL ($OutFile)
+   endif
+
+   select
+      case $Format = $FormatXML
+         ;-------------------------------------------------------------------
+         ; Result To XML
+         ;-------------------------------------------------------------------
+         $objRecordSet.Save ($OutFile, $adPersistXML)
+
+      case $Format = $FormatXLS or $Format = $FormatCSV or $Format = $FormatDBF
+         ;-------------------------------------------------------------------
+         ; Result To Excel
+         ;-------------------------------------------------------------------
+         $objExcel = CreateExcel
+         $Workbook = NewWorkbook($objExcel)
+         $i = 1
+         For $j = 0 to $objRecordset.Fields.Count-1
+            $objExcel.Cells($i, $j+1).Value = $objRecordset.Fields.Item($j).Name
+            $objExcel.Cells($i, $j+1).Font.Size = 12
+            $objExcel.Cells($i, $j+1).Font.Bold = TRUE
+         Next
+         ?
+         while not $objRecordset.EOF
+            $i = $i + 1
+            if $RecordSetProc
+               $s = '$$Res = $RecordSetProc ($$i, $$objRecordset)'
+               $ResExe = execute ($s)
+            endif
+            "."
+            ;---------------------------------------
+            ;$Interval=0.01
+            ;$s = ""+($i-1)+"" $s sleep $interval
+            ;for $loop = 1 to len($s) chr(8) + " " + chr(8) next
+            ;------------------------------------------
+            For $j = 0 to $objRecordset.Fields.Count-1
+               $objExcel.Cells($i, $j+1).Value = $objRecordset.Fields.Item($j)
+            Next
+            $objRecordset.MoveNext
+         loop
+
+         $Result = $objExcel.Rows("1:"+$i).Select
+         $Result = $objExcel.Selection.Columns.AutoFit
+
+         select
+            case $Format = $FormatXLS
+               $Res = $Workbook.SaveAs($OutFile)
+            case $Format = $FormatCSV
+               $Res = $Workbook.SaveAs($OutFile, 6)
+            case $Format = $FormatDBF
+               $Res = $Workbook.SaveAs($OutFile, 8)
+         endselect
+
+         $Res = $objExcel.workbooks.Close
+         $objExcel.quit
+      case 1
+         ;-------------------------------------------------------------------
+         ; Result To consol
+         ;-------------------------------------------------------------------
+         $i = 0
+         Do 
+            $i = $i + 1
+            ?
+            For $j = 0 to $objRecordset.Fields.Count-1
+               $objRecordset.Fields.Item($j) " "
+            Next
+            $objRecordset.MoveNext
+         Until $objRecordset.EOF
+   endselect
+  
+endfunction
+
+;=======================================================================================
+; 
+;=======================================================================================
+function ExucuteSQL($FileSQL, optional $RecordSetProc)
+   Dim $RecordCount
+;begin
+   ;-------------------------------------------------------------------
+   ; SQL
+   ;-------------------------------------------------------------------
+   $XMLDOC = CreateXMLDOC
+   $Res = $XMLDOC.Load ($FileSQL)
+   $root = $xmlDoc.documentElement
+   $ConnectionList = $root.childNodes
+   For Each $ConnectionNode In $ConnectionList
+      ? "==================================================================="
+      $ConnectStr = $ConnectionNode.getAttribute("ConnectStr")
+      if $ConnectStr
+         $objConnection = CreateConnection
+         OpenConnection ($objConnection, $ConnectStr)
+      endif
+
+      ;-------------------------------------------------
+      ; SQLList
+      ;-------------------------------------------------
+      $SQLList = $ConnectionNode.getElementsByTagName("SQL")
+      For Each $SQLNode In $SQLList
+         ? "-------------------------------------------------"
+
+         ;-------------------------------------------------
+         ; SQL
+         ;-------------------------------------------------
+         $SQLTextList = $SQLNode.getElementsByTagName("SQLText")
+
+         $SQL = $SQLTextList.Item(0).nodeTypedValue
+         if $SQL
+            ? "SQL = " $SQL
+            $objCommand = CreateCommand ($objConnection, $sql, $adCmdText)
+
+            ;-------------------------------------------------
+            ; SQL.Parameter
+            ;-------------------------------------------------
+            $ParameterList = $SQLNode.getElementsByTagName("Parameter")
+            if $ParameterList
+               $Direction = $adParamInput
+               For Each $ParameterNode In $ParameterList
+                  $Value = $ParameterNode.nodeTypedValue
+                  $Name  = $ParameterNode.getAttribute("Name")
+                  $sType = $ParameterNode.getAttribute("Type")
+                  $Size  = $ParameterNode.getAttribute("Size")
+                  ;-------------------------------------------------------
+                  ;select
+                  ;   case UCASE($Type) = "ADCHAR"
+                  ;      $Type  = $adChar
+                  ;   case UCASE($Type) = "ADNUMERIC"
+                  ;      $Type  = $adNumeric
+                  ;endselect
+                  ;-------------------------------------------------------
+                  Execute ($sType)
+                  $Value = ReadParam($Name, $Value)
+                  $Value = DOStoWin($Value)
+                  $Size = Len($Value)
+                  ? "Name  = " $Name
+                  ? "Value = " $Value
+                  ? "Type  = " $Type 
+                  ? "Size  = " $Size 
+                  $objParameter = $objCommand.CreateParameter ($Name, $Type, $Direction, $Size, $Value)
+                  $objCommand.Parameters.Append($objParameter)
+               next
+            endif
+
+            ;-------------------------------------------------------------------
+            ; Execute SQL
+            ;-------------------------------------------------------------------
+            $objRecordSet = ExecuteCommand($objCommand)
+            if $objRecordSet
+               $objRecordSet.MoveFirst
+               if not $objRecordset.EOF
+                  ;-------------------------------------------------
+                  ; Save
+                  ;-------------------------------------------------
+                  $Save = Val($SQLNode.getAttribute("save"))
+                  if $Save
+                     ;-------------------------------------------------
+                     ; OutFile
+                     ;-------------------------------------------------
+                     $OutFile  = $SQLNode.getAttribute("OutFile")
+                     $OutFile = ReadParam("OutFile", $OutFile)
+                     if $OutFile
+                        $Path = GetFilePath ($OutFile)
+                        if $Path = ""
+                           $OutFile = @CurDir + "\" + $OutFile
+                        endif
+                        $Ext = GetFileExt ($OutFile)
+                        if $Ext = ""
+                           $Ext = "XLS"
+                           $OutFile = $OutFile + "."+ $Ext
+                        endif
+                        ? "OutFile = " $OutFile
+                        select
+                           case UCASE($Ext) = "XLS"
+                              $Format = $FormatXLS
+                           case UCASE($Ext) = "CSV"
+                              $Format = $FormatCSV
+                           case UCASE($Ext) = "XML"
+                              $Format = $FormatXML
+                           case UCASE($Ext) = "DBF"
+                              $Format = $FormatDBF
+                           case 1
+                              $Format = 0
+                        endselect
+                     endif
+                  
+                     SaveRecordSet($objRecordSet, $Format, $OutFile, $RecordSetProc)
+                  endif
+               endif
+               ;-------------------------------------------------------------------
+               ; Close Recordset
+               ;-------------------------------------------------------------------
+               CloseRecordset ($objRecordset)
+            else
+               $objCommand.Execute ($RecordCount)
+            endif
+         endif
+      Next
+
+      ;-------------------------------------------------------------------
+      ; Close Connection
+      ;-------------------------------------------------------------------
+      CloseConnection ($objConnection)
+   Next
+endfunction
+
+;-------------------------------------------------
+; OracleExist
+;-------------------------------------------------
+function OracleExist ($OracleHomeName)
+;begin
+   $OracleExist = 0
+   $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\ALL_HOMES'
+   $HOME_COUNTER = RegReadString ($Key, "HOME_COUNTER")
+   for $i=1 to $HOME_COUNTER
+      $ID_HOME = $i - 1
+      $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\ALL_HOMES\ID'+$ID_HOME
+      $NAME = RegReadString ($Key, "NAME")
+      $PATH = RegReadString ($Key, "PATH")
+      if (UCase($NAME) = UCase($OracleHomeName)) and (EXIST($PATH))
+         $OracleExist = 1
+      endif
+   next
+EndFunction
+
+;-------------------------------------------------
+; Oracle_HOME_KEY
+;-------------------------------------------------
+function Oracle_HOME_KEY($OracleHomeName)
+;begin
+   $Oracle_HOME_KEY = ""
+   $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\ALL_HOMES'
+   $HOME_COUNTER = RegReadString ($Key, "HOME_COUNTER")
+   for $i=1 to $HOME_COUNTER
+      $ID_HOME = $i - 1
+      $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\HOME'+$ID_HOME
+      $ORACLE_HOME_NAME = RegReadString ($Key, "ORACLE_HOME_NAME")
+      if UCase($ORACLE_HOME_NAME) = UCase($OracleHomeName)
+         $ORACLE_HOME_KEY = RegReadString ($Key, "ORACLE_HOME_KEY")
+      endif
+   next
+EndFunction
+
+;-------------------------------------------------
+; Oracle_HOME_ID
+;-------------------------------------------------
+function Oracle_HOME_ID ($OracleHomeName)
+;begin
+   $Oracle_HOME_ID = ""
+   $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\ALL_HOMES'
+   $HOME_COUNTER = RegReadString ($Key, "HOME_COUNTER")
+   for $i=1 to $HOME_COUNTER
+      $ID_HOME = $i - 1
+      $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\HOME'+$ID_HOME
+      $ORACLE_HOME_NAME = RegReadString ($Key, "ORACLE_HOME_NAME")
+      if UCase($ORACLE_HOME_NAME) = UCase($OracleHomeName)
+         $ORACLE_HOME_ID = RegReadString ($Key, "ID")
+      endif
+   next
+EndFunction
+
+;-------------------------------------------------
+; Oracle_HOME
+;-------------------------------------------------
+function Oracle_HOME ($OracleHomeName)
+;begin
+   $Oracle_HOME = ""
+   $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\ALL_HOMES'
+   $HOME_COUNTER = RegReadString ($Key, "HOME_COUNTER")
+   for $i=1 to $HOME_COUNTER
+      $ID_HOME = $i - 1
+      $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\HOME'+$ID_HOME
+      $ORACLE_HOME_NAME = RegReadString ($Key, "ORACLE_HOME_NAME")
+      if UCase($ORACLE_HOME_NAME) = UCase($OracleHomeName)
+         $ORACLE_HOME = RegReadString ($Key, "Oracle_HOME")
+      endif
+   next
+EndFunction
+
+;-------------------------------------------------
+; Oracle_GROUP_NAME
+;-------------------------------------------------
+function Oracle_GROUP_NAME ($OracleHomeName)
+;begin
+   $Oracle_GROUP_NAME = ""
+   $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\ALL_HOMES'
+   $HOME_COUNTER = RegReadString ($Key, "HOME_COUNTER")
+   for $i=1 to $HOME_COUNTER
+      $ID_HOME = $i - 1
+      $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\HOME'+$ID_HOME
+      $ORACLE_HOME_NAME = RegReadString ($Key, "ORACLE_HOME_NAME")
+      if UCase($ORACLE_HOME_NAME) = UCase($OracleHomeName)
+         $ORACLE_GROUP_NAME = RegReadString ($Key, "Oracle_GROUP_NAME")
+      endif
+   next
+EndFunction
+
+;-------------------------------------------------
+; SetOracle
+;-------------------------------------------------
+function SetOracle ($OracleHomeName)
+;begin
+   LogAdd($Log, $LogFile,"P","----------------------------------------------")
+   LogAdd($Log, $LogFile,"P","Установка "+$OracleHomeName+" ...")
+   $NLS_LANG_L               = "AMERICAN_AMERICA.CL8MSWIN1251"
+   $NLS_DATE_FORMAT_L        = "dd.MM.yy"
+   $NLS_NUMERIC_CHARACTERS_L = ","
+   $ORACLE_HOME_NAME_L       = ""
+   if OracleExist ($OracleHomeName)
+
+      $ORACLE_HOME_NAME_L  = $OracleHomeName
+
+      $ORACLE_GROUP_NAME_L = Oracle_GROUP_NAME ($OracleHomeName)
+      $ORACLE_HOME_L       = Oracle_HOME ($OracleHomeName)
+      $TNS_ADMIN_L         = $ORACLE_HOME_L+"\network\ADMIN"
+
+      $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE'
+      RegWriteString ($Key, "ORACLE_GROUP_NAME", $ORACLE_GROUP_NAME_L)
+      RegWriteString ($Key, "ORACLE_HOME"      , $ORACLE_HOME_L      )
+      RegWriteString ($Key, "ORACLE_HOME_NAME" , $ORACLE_HOME_NAME_L )
+      RegWriteString ($Key, "TNS_ADMIN"        , $TNS_ADMIN_L        )
+
+      $DEFAULT_HOME_L         = $ORACLE_HOME_NAME_L
+      $LAST_HOME_L            = Oracle_HOME_ID($ORACLE_HOME_NAME_L)
+
+      $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\ALL_HOMES'
+      RegWriteString ($Key, "DEFAULT_HOME"     , $DEFAULT_HOME_L     )
+      RegWriteString ($Key, "LAST_HOME"        , $LAST_HOME_L        )
+
+      $Key = 'HKEY_LOCAL_MACHINE\'+Oracle_HOME_KEY($ORACLE_HOME_NAME_L)
+      RegWriteString ($Key, "NLS_LANG"              , $NLS_LANG_L              )
+      RegWriteString ($Key, "NLS_DATE_FORMAT"       , $NLS_DATE_FORMAT_L       )
+      RegWriteString ($Key, "NLS_NUMERIC_CHARACTERS", $NLS_NUMERIC_CHARACTERS_L)
+   else
+      if UCase($OracleHomeName) = UCase($OraHome10)
+         $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\KEY_OraDb10g_home1'
+         $ORACLE_HOME_NAME_L  = RegReadString ($Key, "ORACLE_HOME_NAME")
+         $ORACLE_GROUP_NAME_L = RegReadString ($Key, "ORACLE_GROUP_NAME")
+         $ORACLE_HOME_L       = RegReadString ($Key, "ORACLE_HOME")
+         $TNS_ADMIN_L         = $ORACLE_HOME_L+"\network\ADMIN"
+
+         $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE'
+         RegWriteString ($Key, "ORACLE_GROUP_NAME", $ORACLE_GROUP_NAME_L)
+         RegWriteString ($Key, "ORACLE_HOME"      , $ORACLE_HOME_L      )
+         RegWriteString ($Key, "ORACLE_HOME_NAME" , $ORACLE_HOME_NAME_L )
+         RegWriteString ($Key, "TNS_ADMIN"        , $TNS_ADMIN_L        )
+
+         $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\KEY_OraDb10g_home1'
+         RegWriteString ($Key, "NLS_LANG"              , $NLS_LANG_L              )
+         RegWriteString ($Key, "NLS_DATE_FORMAT"       , $NLS_DATE_FORMAT_L       )
+         RegWriteString ($Key, "NLS_NUMERIC_CHARACTERS", $NLS_NUMERIC_CHARACTERS_L)
+      endif
+   endif
+   LogAdd($Log, $LogFile,"P","----------------------------------------------")
+
+EndFunction
+
+;-------------------------------------------------
+; DisplayOracle
+;-------------------------------------------------
+function DisplayOracle
+;begin
+   $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE'
+   LogAdd($Log,$LogFile,"I","--------------------------------------")
+   LogAdd($Log,$LogFile,"I",$Key)
+   $ORACLE_GROUP_NAME = RegReadString ($Key, "ORACLE_GROUP_NAME")
+   $ORACLE_HOME       = RegReadString ($Key, "ORACLE_HOME")
+   $ORACLE_HOME_NAME  = RegReadString ($Key, "ORACLE_HOME_NAME")
+   $TNS_ADMIN         = RegReadString ($Key, "TNS_ADMIN")
+
+   LogAdd($Log,$LogFile,"I","ORACLE_GROUP_NAME      = "+$ORACLE_GROUP_NAME)
+   LogAdd($Log,$LogFile,"I","ORACLE_HOME            = "+$ORACLE_HOME      )
+   LogAdd($Log,$LogFile,"I","ORACLE_HOME_NAME       = "+$ORACLE_HOME_NAME )
+   LogAdd($Log,$LogFile,"I","TNS_ADMIN              = "+$TNS_ADMIN        )
+
+   $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\ALL_HOMES'
+   LogAdd($Log,$LogFile,"I","--------------------------------------")
+   LogAdd($Log,$LogFile,"I",$Key)
+   $HOME_COUNTER = RegReadString ($Key, "HOME_COUNTER")
+   $DEFAULT_HOME = RegReadString ($Key, "DEFAULT_HOME")
+   $LAST_HOME    = RegReadString ($Key, "LAST_HOME")
+   LogAdd($Log,$LogFile,"I","HOME_COUNTER           = "+$HOME_COUNTER)
+   LogAdd($Log,$LogFile,"I","DEFAULT_HOME           = "+$DEFAULT_HOME)
+   LogAdd($Log,$LogFile,"I","LAST_HOME              = "+$LAST_HOME   )
+
+   for $i=1 to $HOME_COUNTER
+      $ID_HOME = $i - 1
+      $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\ALL_HOMES\ID'+$ID_HOME
+      LogAdd($Log,$LogFile,"I","--------------------------------------")
+      LogAdd($Log,$LogFile,"I",$Key)
+      $NAME = RegReadString ($Key, "NAME")
+      $PATH = RegReadString ($Key, "PATH")
+      LogAdd($Log,$LogFile,"I","NAME                   = "+$NAME)
+      LogAdd($Log,$LogFile,"I","PATH                   = "+$PATH)
+   next
+
+   for $i=1 to $HOME_COUNTER
+      $ID_HOME = $i -1 
+      $Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\ORACLE\HOME'+$ID_HOME
+      LogAdd($Log,$LogFile,"I","--------------------------------------")
+      LogAdd($Log,$LogFile,"I",$Key)
+      $ORACLE_HOME_NAME       = RegReadString ($Key, "ORACLE_HOME_NAME")
+      $ORACLE_HOME            = RegReadString ($Key, "ORACLE_HOME")
+      $ORACLE_HOME_KEY        = RegReadString ($Key, "ORACLE_HOME_KEY")
+      $NLS_LANG               = RegReadString ($Key, "NLS_LANG")
+      $NLS_DATE_FORMAT        = RegReadString ($Key, "NLS_DATE_FORMAT")
+      $NLS_NUMERIC_CHARACTERS = RegReadString ($Key, "NLS_NUMERIC_CHARACTERS")
+      LogAdd($Log,$LogFile,"I","ORACLE_HOME_NAME       = "+$ORACLE_HOME_NAME      )
+      LogAdd($Log,$LogFile,"I","ORACLE_HOME            = "+$ORACLE_HOME           )
+      LogAdd($Log,$LogFile,"I","ORACLE_HOME_KEY        = "+$ORACLE_HOME_KEY       )
+      LogAdd($Log,$LogFile,"I","NLS_LANG               = "+$NLS_LANG              )
+      LogAdd($Log,$LogFile,"I","NLS_DATE_FORMAT        = "+$NLS_DATE_FORMAT       )
+      LogAdd($Log,$LogFile,"I","NLS_NUMERIC_CHARACTERS = "+$NLS_NUMERIC_CHARACTERS)
+   next
+
+   LogAdd($Log,$LogFile,"I","--------------------------------------")
+EndFunction
