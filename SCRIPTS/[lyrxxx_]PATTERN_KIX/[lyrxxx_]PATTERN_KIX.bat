@@ -9,17 +9,30 @@ setlocal enabledelayedexpansion
 rem -------------------------------------------------------------------
 rem SCRIPTS_DIR - Каталог скриптов
 rem -------------------------------------------------------------------
-set SCRIPTS_DIR=D:\PROJECTS_LYR\CHECK_LIST\03_SCRIPT\04_BAT\PROJECTS_BAT\TOOLS_BAT
-
+if not defined SCRIPTS_DIR (
+    set SCRIPTS_DIR=D:\TOOLS\TOOLS_BAT
+    set SCRIPTS_DIR=D:\PROJECTS_LYR\CHECK_LIST\03_SCRIPT\04_BAT\PROJECTS_BAT\TOOLS_SRC_BAT
+)
+rem echo SCRIPTS_DIR: %SCRIPTS_DIR%
 rem -------------------------------------------------------------------
 rem LIB_BAT - каталог библиотеки скриптов
 rem -------------------------------------------------------------------
-set LIB_BAT=!SCRIPTS_DIR!\LIB
-
+if not defined LIB_BAT (
+    set LIB_BAT=!SCRIPTS_DIR!\LIB
+    rem echo LIB_BAT: !LIB_BAT!
+)
+if not exist !LIB_BAT!\ (
+    echo ERROR: Каталог библиотеки LYR !LIB_BAT! не существует...
+    exit /b 0
+)
 rem -------------------------------------------------------------------
 rem SCRIPTS_DIR_KIX - Каталог скриптов KIX
 rem -------------------------------------------------------------------
-set SCRIPTS_DIR_KIX=D:\PROJECTS_LYR\CHECK_LIST\03_SCRIPT\01_KIX\PROJECTS_KIX\TOOLS_KIX
+if not defined SCRIPTS_DIR_KIX (
+    set SCRIPTS_DIR_KIX=D:\TOOLS\TOOLS_KIX
+    set SCRIPTS_DIR_KIX=D:\PROJECTS_LYR\CHECK_LIST\03_SCRIPT\01_KIX\PROJECTS_KIX\TOOLS_SRC_KIX
+)
+rem echo SCRIPTS_DIR_KIX: !SCRIPTS_DIR_KIX!
 
 rem --------------------------------------------------------------------------------
 rem 
