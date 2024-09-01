@@ -1,6 +1,6 @@
 @echo off
 rem -------------------------------------------------------------------
-rem [lyrxxx_]PATTERN_easy1.bat
+rem ListFile_kix.bat
 rem -------------------------------------------------------------------
 chcp 1251>NUL
 
@@ -30,7 +30,8 @@ rem SCRIPTS_DIR_KIX - Каталог скриптов KIX
 rem -------------------------------------------------------------------
 if not defined SCRIPTS_DIR_KIX (
     set SCRIPTS_DIR_KIX=D:\TOOLS\TOOLS_KIX
-    set SCRIPTS_DIR_KIX=D:\PROJECTS_LYR\CHECK_LIST\03_SCRIPT\01_KIX\PROJECTS_KIX\TOOLS_SRC_KIX
+    set SCRIPTS_DIR_KIX=D:\PROJECTS_LYR\CHECK_LIST\03_SCRIPT\01_KIX\PROJECTS_KIX\TOOLS_SRC_KIX\SCRIPTS
+                        
 )
 rem echo SCRIPTS_DIR_KIX: !SCRIPTS_DIR_KIX!
 
