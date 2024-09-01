@@ -1,6 +1,6 @@
 @echo off
 rem -------------------------------------------------------------------
-rem [lyrxxx_]PATTERN_KIX.bat
+rem 
 rem -------------------------------------------------------------------
 chcp 1251>NUL
 
@@ -10,29 +10,19 @@ rem -------------------------------------------------------------------
 rem SCRIPTS_DIR - Каталог скриптов
 rem -------------------------------------------------------------------
 if not defined SCRIPTS_DIR (
-    set SCRIPTS_DIR=D:\TOOLS\TOOLS_BAT
     set SCRIPTS_DIR=D:\PROJECTS_LYR\CHECK_LIST\03_SCRIPT\04_BAT\PROJECTS_BAT\TOOLS_SRC_BAT
 )
-rem echo SCRIPTS_DIR: %SCRIPTS_DIR%
 rem -------------------------------------------------------------------
 rem LIB_BAT - каталог библиотеки скриптов
 rem -------------------------------------------------------------------
-if not defined LIB_BAT (
-    set LIB_BAT=!SCRIPTS_DIR!\LIB
-    rem echo LIB_BAT: !LIB_BAT!
-)
-if not exist !LIB_BAT!\ (
-    echo ERROR: Каталог библиотеки LYR !LIB_BAT! не существует...
-    exit /b 0
-)
+set LIB_BAT=!SCRIPTS_DIR!\LIB
+
 rem -------------------------------------------------------------------
 rem SCRIPTS_DIR_KIX - Каталог скриптов KIX
 rem -------------------------------------------------------------------
 if not defined SCRIPTS_DIR_KIX (
-    set SCRIPTS_DIR_KIX=D:\TOOLS\TOOLS_KIX
     set SCRIPTS_DIR_KIX=D:\PROJECTS_LYR\CHECK_LIST\03_SCRIPT\01_KIX\PROJECTS_KIX\TOOLS_SRC_KIX
 )
-rem echo SCRIPTS_DIR_KIX: !SCRIPTS_DIR_KIX!
 
 rem --------------------------------------------------------------------------------
 rem 
@@ -41,8 +31,12 @@ rem ----------------------------------------------------------------------------
     set BATNAME=%~nx0
     echo Start !BATNAME! ...
 
+    set DEBUG=
+    set /a LOG_FILE_ADD=0
+
     rem Количество аргументов
     call :Read_N %* || exit /b 1
+
     call :SET_LIB %0 || exit /b 1
 
     rem -------------------------------------
@@ -57,23 +51,32 @@ rem ----------------------------------------------------------------------------
     ) else (
         echo INFO: O1 not defined ...
     )
+    echo OPTION:!OPTION!
 
     rem -------------------------------------
     rem ARGS
     rem -------------------------------------
     rem Проверка на обязательные аргументы
-    set Dir=.
-    set PN_CAPTION=Каталог
-    call :Read_P Dir %1 || exit /b 1
-    rem echo Dir: !Dir!
-    if defined Dir (
-        set ARGS=!ARGS! !Dir!
+    set A1=
+    set PN_CAPTION=A1
+    call :Read_P A1 A1 || exit /b 1
+    rem echo A1:!A1!
+    if defined A1 (
+        set ARGS=!ARGS! !A1!
     ) else (
-        echo ERROR: Dir not defined ...
+        echo ERROR: A1 not defined ...
         set OK=
     )
+    echo ARGS:!ARGS!
 
-    set APP_KIX=[lyrxxx_]PATTERN_KIX
+    rem set APP_KIX_DIR=D:\PROJECTS_LYR\CHECK_LIST\03_SCRIPT\01_KIX\PROJECTS_KIX\TOOLS_KIX\KIX
+    rem set APP_KIX=
+    rem call :SET_KIX || exit /b 1
+    rem if exist !APP_KIX_DIR!\!APP_KIX!.kix (
+    rem     echo START !APP_KIX_DIR!\!APP_KIX!.kix ... 
+    rem     kix32.exe !APP_KIX_DIR!\!APP_KIX!.kix "$A1=!A1!"
+    rem )
+    set APP_KIX=[lyrxxx_]PATTERN_easy_kix
 
     call :SET_KIX || exit /b 1
 
@@ -82,7 +85,11 @@ rem ----------------------------------------------------------------------------
         kix32.exe !APP_KIX_DIR!\!APP_KIX!.kix "$Dir=!Dir!"
     )
 
-    rem call :PressAnyKey || exit /b 1
+
+
+
+
+    call :PressAnyKey || exit /b 1
 
     exit /b 0
 :end
@@ -115,6 +122,9 @@ rem =================================================
 rem =================================================
 rem LYRSupport.bat
 rem =================================================
+:PressAnyKey
+%LIB_BAT%\LYRSupport.bat %*
+exit /b 0
 :Read_N
 %LIB_BAT%\LYRSupport.bat %*
 exit /b 0
