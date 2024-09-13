@@ -111,7 +111,7 @@
     LogAdd ($Log, $LogFile, "I", "StartLogFile...")
     LogAdd ($Log, $LogFile, "I", "Журнал="+$LogFile)
 
-    ;$Dir = "D:\PROJECTS_LYR\CHECK_LIST\03_SCRIPT\01_KIX\PROJECTS_KIX\TOOLS_KIX\KIX\ListFile"
+    ;$Dir = "D:\PROJECTS_LYR\CHECK_LIST\SCRIPT\01_KIX\PROJECTS_KIX\TOOLS_KIX\KIX\ListFile"
     $Result = ListFile ($Dir, "*.*", "CONSOLE", 1)
     ?
 
