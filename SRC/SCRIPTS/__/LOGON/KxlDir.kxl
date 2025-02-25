@@ -1,4 +1,0 @@
-Global $KxlDir, $ToolsDir
-
-$KxlDir   = "\\S73FS01\APPInfo\Tools"
-$ToolsDir = "\\S73FS01\APPInfo\Tools"
