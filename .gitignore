@@ -22,6 +22,8 @@ __pycache__/
 *.rar
 *.egg-info
 *.ipynb_checkpoints
+*.jpg
+*.pdf
 ### *.bat
 
 ### -------------------------------------
@@ -70,3 +72,4 @@ EXE/
 WORK/
 Writerside/
 .INFO/
+.ARCH/
